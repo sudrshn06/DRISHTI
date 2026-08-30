@@ -1,6 +1,10 @@
 # DRISHTI
 
 **Packaged Commodity Inspection Portal — Every Label Counts**
+SIH PS ID => SIH26034
+## Why DRISHTI?
+
+Manual packaged-commodity inspection requires officers to examine dense declarations across multiple package surfaces while applying product-specific regulatory requirements. DRISHTI turns captured package evidence into a structured, traceable inspection workflow while keeping legal decisions deterministic and officer-controlled.
 
 DRISHTI is an evidence-first packaged-commodity inspection and decision-support system for Legal Metrology inspectors. It helps an authenticated officer capture package surfaces, assess image quality, extract visible declarations, reconcile machine observations, apply deterministic regulatory rules, review evidence, and finalize an evidence-backed report.
 
