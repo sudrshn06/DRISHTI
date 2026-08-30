@@ -1,0 +1,298 @@
+{
+  "baseline_counts": {
+    "inspections": 1555,
+    "captures": 701,
+    "report_snapshots": 499
+  },
+  "indexes": [
+    {
+      "table": "alembic_version",
+      "index": "alembic_version_pkc",
+      "definition": "CREATE UNIQUE INDEX alembic_version_pkc ON public.alembic_version USING btree (version_num)"
+    },
+    {
+      "table": "inspections",
+      "index": "inspections_pkey",
+      "definition": "CREATE UNIQUE INDEX inspections_pkey ON public.inspections USING btree (inspection_id)"
+    },
+    {
+      "table": "captures",
+      "index": "captures_pkey",
+      "definition": "CREATE UNIQUE INDEX captures_pkey ON public.captures USING btree (capture_id)"
+    },
+    {
+      "table": "captures",
+      "index": "ix_captures_inspection_id",
+      "definition": "CREATE INDEX ix_captures_inspection_id ON public.captures USING btree (inspection_id)"
+    },
+    {
+      "table": "captures",
+      "index": "ix_captures_image_sha256",
+      "definition": "CREATE INDEX ix_captures_image_sha256 ON public.captures USING btree (image_sha256)"
+    },
+    {
+      "table": "report_snapshots",
+      "index": "report_snapshots_pkey",
+      "definition": "CREATE UNIQUE INDEX report_snapshots_pkey ON public.report_snapshots USING btree (report_id)"
+    },
+    {
+      "table": "report_snapshots",
+      "index": "ix_report_snapshots_inspection_id",
+      "definition": "CREATE INDEX ix_report_snapshots_inspection_id ON public.report_snapshots USING btree (inspection_id)"
+    },
+    {
+      "table": "report_snapshots",
+      "index": "ix_report_snapshots_overall_disposition",
+      "definition": "CREATE INDEX ix_report_snapshots_overall_disposition ON public.report_snapshots USING btree (overall_disposition)"
+    },
+    {
+      "table": "captures",
+      "index": "ix_captures_object_key",
+      "definition": "CREATE INDEX ix_captures_object_key ON public.captures USING btree (object_key)"
+    },
+    {
+      "table": "users",
+      "index": "users_pkey",
+      "definition": "CREATE UNIQUE INDEX users_pkey ON public.users USING btree (user_id)"
+    },
+    {
+      "table": "users",
+      "index": "ix_users_username",
+      "definition": "CREATE UNIQUE INDEX ix_users_username ON public.users USING btree (username)"
+    },
+    {
+      "table": "users",
+      "index": "ix_users_email",
+      "definition": "CREATE UNIQUE INDEX ix_users_email ON public.users USING btree (email)"
+    },
+    {
+      "table": "inspections",
+      "index": "ix_inspections_created_by_user_id",
+      "definition": "CREATE INDEX ix_inspections_created_by_user_id ON public.inspections USING btree (created_by_user_id)"
+    }
+  ],
+  "measurements": {
+    "baseline": {
+      "A_recent_history": {
+        "min": 1.1914249989786185,
+        "median": 1.477567002439173,
+        "mean": 2.087539100466529,
+        "max": 7.543874002294615,
+        "p95": 7.543874002294615
+      },
+      "B_history_pagination": {
+        "min": 1.0945659996650647,
+        "median": 1.5160835009737639,
+        "mean": 1.989848199809785,
+        "max": 4.298183997889282,
+        "p95": 4.298183997889282
+      },
+      "C_status_filter": {
+        "min": 1.2032840022584423,
+        "median": 1.576537499204278,
+        "mean": 1.8802033995598322,
+        "max": 3.4940069999720436,
+        "p95": 3.4940069999720436
+      },
+      "D_date_filter": {
+        "min": 1.2655930004257243,
+        "median": 1.5884650001680711,
+        "mean": 1.7664421004155884,
+        "max": 3.246328000386711,
+        "p95": 3.246328000386711
+      },
+      "E_owner_scoped": {
+        "min": 1.0640699983923696,
+        "median": 1.3740685008087894,
+        "mean": 1.3658077998115914,
+        "max": 1.727969000057783,
+        "p95": 1.727969000057783
+      },
+      "F_combined_filters": {
+        "min": 1.299006002227543,
+        "median": 1.445079500626889,
+        "mean": 1.67147690008278,
+        "max": 2.9477660027623642,
+        "p95": 2.9477660027623642
+      },
+      "G_single_lookup": {
+        "min": 0.9279109981434885,
+        "median": 1.4882175000821007,
+        "mean": 1.635073799843667,
+        "max": 3.071437997277826,
+        "p95": 3.071437997277826
+      },
+      "H_report_snapshot_lookup": {
+        "min": 1.2138020028942265,
+        "median": 1.6133965000335593,
+        "mean": 1.975637900250149,
+        "max": 4.084988999238703,
+        "p95": 4.084988999238703
+      },
+      "I_dashboard_counts": {
+        "min": 0.8250239989138208,
+        "median": 1.2859314992965665,
+        "mean": 1.7608872996788705,
+        "max": 4.31249699977343,
+        "p95": 4.31249699977343
+      },
+      "J_dashboard_aggregations": {
+        "min": 1.184579999971902,
+        "median": 1.2830159976147115,
+        "mean": 2.052334600011818,
+        "max": 6.324632002360886,
+        "p95": 6.324632002360886
+      }
+    },
+    "5000_inspections": {
+      "A_recent_history": {
+        "min": 5.770183001004625,
+        "median": 6.722106498273206,
+        "mean": 7.047280298866099,
+        "max": 9.879402998194564,
+        "p95": 9.879402998194564
+      },
+      "B_history_pagination": {
+        "min": 6.2879340002837125,
+        "median": 6.814827998823603,
+        "mean": 7.572758799869916,
+        "max": 11.851494000438834,
+        "p95": 11.851494000438834
+      },
+      "C_status_filter": {
+        "min": 6.2618500014650635,
+        "median": 7.580683999549365,
+        "mean": 8.087224699920625,
+        "max": 11.853849999170052,
+        "p95": 11.853849999170052
+      },
+      "D_date_filter": {
+        "min": 6.1254620013642125,
+        "median": 6.8996539994259365,
+        "mean": 6.855586800156743,
+        "max": 7.663811997190351,
+        "p95": 7.663811997190351
+      },
+      "E_owner_scoped": {
+        "min": 23.34376299768337,
+        "median": 26.965836999806925,
+        "mean": 27.51872309927421,
+        "max": 37.092800997925224,
+        "p95": 37.092800997925224
+      },
+      "F_combined_filters": {
+        "min": 5.690160000085598,
+        "median": 6.69649149858742,
+        "mean": 6.648674200187088,
+        "max": 7.372248997853603,
+        "p95": 7.372248997853603
+      },
+      "G_single_lookup": {
+        "min": 1.283834997593658,
+        "median": 2.363071000218042,
+        "mean": 2.49446710004122,
+        "max": 4.342061001807451,
+        "p95": 4.342061001807451
+      },
+      "H_report_snapshot_lookup": {
+        "min": 1.7114149995904882,
+        "median": 2.1131180019438034,
+        "mean": 2.138998900409206,
+        "max": 2.591157997812843,
+        "p95": 2.591157997812843
+      },
+      "I_dashboard_counts": {
+        "min": 3.7766630011901725,
+        "median": 4.201763500532252,
+        "mean": 6.978972000797512,
+        "max": 15.39370200043777,
+        "p95": 15.39370200043777
+      },
+      "J_dashboard_aggregations": {
+        "min": 2.6681629969971254,
+        "median": 2.8786350012524053,
+        "mean": 9.615844200016,
+        "max": 59.971959999529645,
+        "p95": 59.971959999529645
+      }
+    },
+    "10000_inspections": {
+      "A_recent_history": {
+        "min": 10.10995500109857,
+        "median": 14.798104497458553,
+        "mean": 14.331575500182225,
+        "max": 17.89947699944605,
+        "p95": 17.89947699944605
+      },
+      "B_history_pagination": {
+        "min": 10.501990000193473,
+        "median": 15.298583999538096,
+        "mean": 16.349825100041926,
+        "max": 24.435055998765165,
+        "p95": 24.435055998765165
+      },
+      "C_status_filter": {
+        "min": 12.912796999444254,
+        "median": 14.298185000370722,
+        "mean": 15.571641399947111,
+        "max": 21.13571800146019,
+        "p95": 21.13571800146019
+      },
+      "D_date_filter": {
+        "min": 12.269511997146765,
+        "median": 16.118200499477098,
+        "mean": 17.462915399300982,
+        "max": 26.7535120001412,
+        "p95": 26.7535120001412
+      },
+      "E_owner_scoped": {
+        "min": 61.98736599981203,
+        "median": 101.6459210022731,
+        "mean": 100.24527860077797,
+        "max": 149.26138699956937,
+        "p95": 149.26138699956937
+      },
+      "F_combined_filters": {
+        "min": 13.629157998366281,
+        "median": 15.596017999996548,
+        "mean": 20.226667799579445,
+        "max": 33.808806001616176,
+        "p95": 33.808806001616176
+      },
+      "G_single_lookup": {
+        "min": 1.542429999972228,
+        "median": 2.020157500737696,
+        "mean": 2.1085078002215596,
+        "max": 3.3399669991922565,
+        "p95": 3.3399669991922565
+      },
+      "H_report_snapshot_lookup": {
+        "min": 1.5311689967347775,
+        "median": 1.7438474988011876,
+        "mean": 2.064070799315232,
+        "max": 3.653261999716051,
+        "p95": 3.653261999716051
+      },
+      "I_dashboard_counts": {
+        "min": 6.297554999036947,
+        "median": 8.088582499112817,
+        "mean": 8.427878798829624,
+        "max": 10.980288996506715,
+        "p95": 10.980288996506715
+      },
+      "J_dashboard_aggregations": {
+        "min": 3.6201080001774244,
+        "median": 4.839170000195736,
+        "mean": 4.941731700091623,
+        "max": 6.496842997876229,
+        "p95": 6.496842997876229
+      }
+    }
+  },
+  "cleanup": {
+    "final_inspections": 1555,
+    "final_captures": 701,
+    "final_report_snapshots": 499,
+    "cleanup_sec": 1.0493761139987328
+  }
+}

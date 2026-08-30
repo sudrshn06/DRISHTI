@@ -1,0 +1,92 @@
+# ============================================================
+# DRISHTI — .gitignore
+# ============================================================
+
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+*.coveragerc
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Alembic environment (generated)
+# Do NOT ignore alembic/versions/ — migration files are committed
+
+# ----- Node / Frontend -----
+node_modules/
+dist/
+.vite/
+
+# ----- Environment -----
+.env
+# .env.example is NOT ignored — it contains placeholder values only
+
+# ----- IDE / OS -----
+.idea/
+.vscode/
+*.suo
+*.user
+*.sln.docstates
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ----- Docker -----
+# Do not ignore docker-compose.yml or Dockerfiles
+
+# ----- Storage (runtime) -----
+storage/
+
+# ----- Logs -----
+*.log
+logs/
+
+# ----- Benchmarks & Backups -----
+backend/benchmark/backups/
+
+
+# ----- Extra secret protection -----
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+secrets*.json
+
+# ----- Local development / AI tooling -----
+.agents/
+.paddlex-cache/
+
+# ----- Internal development notes -----
+memory.md
+DRISHTI_Phase9B_Bug_Fix_Prompt_Pack.md
+
+# ----- Generated inspection reports -----
+backend/DRISHTI_Inspection_Report_*.pdf
+backend/DRISHTI_Inspection_Report_*.docx

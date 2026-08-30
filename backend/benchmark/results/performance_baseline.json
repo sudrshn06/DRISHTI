@@ -1,0 +1,79 @@
+{
+  "timestamp": "2026-08-26T17:43:47.487691",
+  "ocr_metrics": {
+    "decode_dur_ms": 4.377481000119587,
+    "quality_dur_ms": 15.241332999721635,
+    "cold_ocr_init_sec": 10.234700551001879,
+    "warm_ocr_mean_sec": 28.745279995999834,
+    "extraction_dur_ms": 10.345423001126619,
+    "compliance_dur_ms": 39.26100999888149
+  },
+  "db_metrics": {
+    "total_inspections": 1435,
+    "mean_history_ms": 8.964026399917202,
+    "mean_filtered_ms": 4.7241624000889715,
+    "mean_dashboard_ms": 10.692346600990277
+  },
+  "minio_metrics": {
+    "upload_ms": 295.36029300288646,
+    "retrieve_ms": 3.6026849993504584
+  },
+  "report_metrics": {
+    "pdf_gen_ms": 109.06969099960406,
+    "pdf_size_kb": 18.22265625,
+    "docx_gen_ms": 109.22896099873469,
+    "docx_size_kb": 40.1328125
+  },
+  "load_metrics": {
+    "/api/health_c1": {
+      "median_ms": 10.29577300141682,
+      "p95_ms": 15.912535000097705,
+      "error_rate": 0.0
+    },
+    "/api/dashboard_c1": {
+      "median_ms": 49.207689000468235,
+      "p95_ms": 104.3402769973909,
+      "error_rate": 0.0
+    },
+    "/api/inspections_c1": {
+      "median_ms": 28.437263001251267,
+      "p95_ms": 37.80816299695289,
+      "error_rate": 0.0
+    },
+    "/api/health_c5": {
+      "median_ms": 69.12421100059873,
+      "p95_ms": 100.54864199992153,
+      "error_rate": 0.0
+    },
+    "/api/dashboard_c5": {
+      "median_ms": 162.222129998554,
+      "p95_ms": 195.3077639991534,
+      "error_rate": 0.0
+    },
+    "/api/inspections_c5": {
+      "median_ms": 117.74494599740137,
+      "p95_ms": 158.13140500176814,
+      "error_rate": 0.0
+    },
+    "/api/health_c10": {
+      "median_ms": 116.58666900075332,
+      "p95_ms": 172.87457199927303,
+      "error_rate": 0.0
+    },
+    "/api/dashboard_c10": {
+      "median_ms": 312.9341249987192,
+      "p95_ms": 397.757836002711,
+      "error_rate": 0.0
+    },
+    "/api/inspections_c10": {
+      "median_ms": 253.0027920001885,
+      "p95_ms": 314.38404100117623,
+      "error_rate": 0.0
+    }
+  },
+  "memory_usage": {
+    "rss_before_kb": 146604,
+    "rss_after_kb": 806708,
+    "net_growth_kb": 660104
+  }
+}

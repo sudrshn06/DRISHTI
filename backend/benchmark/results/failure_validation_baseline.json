@@ -1,0 +1,21 @@
+{
+  "A_postgres_unavailable": "PASS",
+  "B_postgres_restored": "PASS",
+  "C_minio_unavailable_upload": "PASS",
+  "D_minio_unavailable_retrieval": "PASS",
+  "E_minio_restored": "PASS",
+  "F_missing_evidence": "PASS",
+  "G_corrupted_evidence_sha_mismatch": "PASS",
+  "H_invalid_image": "PASS",
+  "I_unsupported_format": "PASS",
+  "J_truncated_bytes": "PASS",
+  "K_ocr_exception": "PASS",
+  "L_empty_ocr_result": "PASS",
+  "M_report_generation_exception": "PASS",
+  "N_finalize_incomplete_or_invalid": "PASS",
+  "O_mutate_finalized_inspection": "PASS",
+  "P_unauthorized_access": "PASS",
+  "Q_cross_owner_access": "PASS",
+  "R_legacy_null_owner_access": "PASS",
+  "S_app_restart_persistence": "PASS"
+}

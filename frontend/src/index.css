@@ -1,0 +1,181 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-indigo-50: #eef4f8;
+  --color-indigo-100: #dce8f1;
+  --color-indigo-200: #bfd3e2;
+  --color-indigo-300: #8fb3ca;
+  --color-indigo-400: #5d8dab;
+  --color-indigo-500: #2f6489;
+  --color-indigo-600: #163a5f;
+  --color-indigo-700: #12314f;
+  --color-indigo-800: #102a43;
+  --color-indigo-900: #0d2236;
+  --color-indigo-950: #071725;
+}
+
+:root {
+  font-family: "Noto Sans", "Segoe UI", Arial, sans-serif;
+  color: #1f2937;
+  background: #f5f7f9;
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --portal-navy: #163a5f;
+  --portal-navy-dark: #102a43;
+  --portal-text: #1f2937;
+  --portal-muted: #5f6b7a;
+  --portal-border: #d8dee6;
+  --portal-page: #f5f7f9;
+  --portal-white: #ffffff;
+  --portal-success: #18794e;
+  --portal-review: #9a6700;
+  --portal-danger: #b42318;
+}
+
+* { box-sizing: border-box; }
+html { min-width: 320px; background: var(--portal-page); }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--portal-page); color: var(--portal-text); }
+button, input, select, textarea { font: inherit; }
+button, summary, a { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled) {
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 120ms ease;
+}
+button:not(:disabled):active { transform: translateY(1px); }
+
+:focus-visible {
+  outline: 3px solid rgba(22, 58, 95, 0.28);
+  outline-offset: 2px;
+}
+
+.portal-page {
+  width: min(1520px, calc(100% - 40px));
+  margin-inline: auto;
+  padding-block: 28px 48px;
+}
+
+.portal-card {
+  border: 1px solid var(--portal-border);
+  border-radius: 10px;
+  background: var(--portal-white);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.portal-view {
+  animation: portal-section-in 190ms ease-out both;
+}
+
+.portal-result-reveal {
+  animation: portal-content-in 180ms ease-out both;
+}
+
+.inspection-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(380px, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+
+.inspection-workspace-column {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.package-presentation-disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 200ms ease, opacity 180ms ease;
+}
+
+.package-presentation-disclosure.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.package-presentation-disclosure-inner { overflow: hidden; }
+.package-presentation-chevron { transition: transform 200ms ease; }
+.package-presentation-chevron.is-open { transform: rotate(180deg); }
+
+@keyframes portal-section-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes portal-content-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.portal-section-title {
+  color: var(--portal-navy-dark);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.portal-interactive {
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease, transform 180ms ease;
+}
+
+.portal-interactive:hover {
+  border-color: #9fb2c3;
+  box-shadow: 0 4px 12px rgba(15, 42, 67, 0.07);
+  transform: translateY(-1px);
+}
+
+.legal-help-button {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+  background: var(--portal-navy) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--portal-navy) !important;
+}
+
+.legal-help-button::before, .legal-help-button::after { content: none !important; }
+details > summary {
+  list-style: none;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+details > summary::-webkit-details-marker { display: none; }
+details[open] > :not(summary) { animation: portal-content-in 180ms ease-out both; }
+
+@media (max-width: 767px) {
+  .portal-page { width: min(100% - 24px, 1520px); padding-block: 20px 96px; }
+}
+
+@media (max-width: 1023px) {
+  .inspection-workspace-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .inspection-workspace-column { display: contents; }
+  .workspace-photographs,
+  .workspace-package-information,
+  .workspace-assessment,
+  .workspace-details {
+    width: 100%;
+    min-width: 0;
+  }
+  .workspace-photographs { order: 1; }
+  .workspace-package-information { order: 2; }
+  .workspace-assessment { order: 3; }
+  .workspace-details { order: 4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,3 @@
+python-interpreter-path = "C:/venvs/drishti-editor/Scripts/python.exe"
+
+search-path = ["backend"]

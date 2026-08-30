@@ -1,0 +1,7 @@
+package_id,image_id,view,image_path,quality_outcome,ocr_success,ocr_duration_sec,extracted_families,pipeline_duration_sec,failure_taxonomy,error_message
+pack_coke,img_coke_1,FRONT,tests/fixtures/real_world/coke_can.jpg,ACCEPTABLE,YES,34.2233,"MRP,CONSUMER_CARE,NET_QUANTITY,MONTH_YEAR,MONTH_YEAR,MANUFACTURER_PACKER_IMPORTER",34.3442,NO_FAILURE,
+pack_shield,img_shield_1,FRONT,tests/fixtures/real_world/pureshield_cleaner.jpg,RETAKE_RECOMMENDED,YES,11.9508,,12.1703,EXTRACTION_FAILURE,
+pack_soda,img_soda_1,FRONT,tests/fixtures/real_world/real_soda_bottle.jpg,ACCEPTABLE,YES,15371.3074,MANUFACTURER_PACKER_IMPORTER,15372.2332,NO_FAILURE,
+pack_low_qual,img_low_qual_1,FRONT,tests/fixtures/real_world/low_quality_black_bottle.jpg,RETAKE_RECOMMENDED,NO,0.0,,3.7685,CAPTURE_QUALITY_FAILURE,"400: {'error': {'code': 'NO_USABLE_TEXT_DETECTED', 'message': 'PaddleOCR executed successfully but found no usable text.'}}"
+pack_blank,img_blank_1,FRONT,tests/fixtures/blank_image.jpg,RETAKE_RECOMMENDED,NO,0.0,,1.2146,CAPTURE_QUALITY_FAILURE,"400: {'error': {'code': 'NO_USABLE_TEXT_DETECTED', 'message': 'PaddleOCR executed successfully but found no usable text.'}}"
+pack_invalid,img_invalid_1,FRONT,tests/fixtures/invalid_file.jpg,ACCEPTED,NO,0.0,,0.0527,CAPTURE_QUALITY_FAILURE,"415: {'error': {'code': 'INVALID_FILE_TYPE', 'message': 'Only JPEG and PNG images are supported.'}}"

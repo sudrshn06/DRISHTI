@@ -1,0 +1,201 @@
+[
+  {
+    "rule_id": "MRP_DECLARATION_PRESENCE",
+    "rule_version": "1.0",
+    "title": "MRP Declaration Presence",
+    "description": "Evaluates whether reliable MRP declaration evidence exists.",
+    "field": "MRP",
+    "jurisdiction": "IN",
+    "product_scope": "GENERIC_RETAIL_PACKAGE",
+    "effective_from": "2022-10-01",
+    "evaluation_type": "REQUIRED_DECLARATION",
+    "parameters": {},
+    "source_reference": "LMPC Rules 2011, Rule 6(1)(e) (as amended by G.S.R. 779(E) & 226(E))",
+    "source_url": "https://consumeraffairs.nic.in/sites/default/files/file-uploads/latestnews/GSR226.pdf"
+  },
+  {
+    "rule_id": "NET_QUANTITY_PRESENCE",
+    "rule_version": "1.0",
+    "title": "Net Quantity Declaration Presence",
+    "description": "Evaluates whether reliable Net Quantity declaration evidence exists.",
+    "field": "NET_QUANTITY",
+    "jurisdiction": "IN",
+    "product_scope": "GENERIC_RETAIL_PACKAGE",
+    "effective_from": "2011-04-01",
+    "evaluation_type": "REQUIRED_DECLARATION",
+    "parameters": {},
+    "source_reference": "LMPC Rules 2011, Rule 6(1)(c)",
+    "source_url": "https://consumeraffairs.nic.in/sites/default/files/uploads/legal-metrology-acts-rules/8.pdf"
+  },
+  {
+    "rule_id": "MANUFACTURER_PACKER_DECLARATION_PRESENCE",
+    "rule_version": "1.0",
+    "title": "Manufacturer/Packer Declaration Presence",
+    "description": "Evaluates whether reliable Manufacturer or Packer declaration evidence exists.",
+    "field": "MANUFACTURER_PACKER_IMPORTER",
+    "jurisdiction": "IN",
+    "product_scope": "GENERIC_RETAIL_PACKAGE",
+    "effective_from": "2018-01-01",
+    "evaluation_type": "REQUIRED_ROLE",
+    "parameters": {
+      "allowed_roles": ["MANUFACTURER", "PACKER"]
+    },
+    "source_reference": "LMPC Rules 2011, Rule 6(1)(a) (as amended by G.S.R. 629(E))",
+    "source_url": "https://egazette.nic.in/"
+  },
+  {
+    "rule_id": "IMPORTER_DECLARATION_PRESENCE",
+    "rule_version": "1.0",
+    "title": "Importer Declaration Presence",
+    "description": "Evaluates whether reliable Importer declaration evidence exists.",
+    "field": "MANUFACTURER_PACKER_IMPORTER",
+    "jurisdiction": "IN",
+    "product_scope": "GENERIC_RETAIL_PACKAGE",
+    "effective_from": "2018-01-01",
+    "evaluation_type": "REQUIRED_ROLE",
+    "parameters": {
+      "allowed_roles": ["IMPORTER"]
+    },
+    "source_reference": "LMPC Rules 2011, Rule 6(1)(a) (as amended by G.S.R. 629(E))",
+    "source_url": "https://egazette.nic.in/"
+  },
+  {
+    "rule_id": "CONSUMER_CARE_DECLARATION_PRESENCE",
+    "rule_version": "1.0",
+    "title": "Consumer Care Declaration Presence",
+    "description": "Evaluates whether reliable Consumer Care declaration evidence exists.",
+    "field": "CONSUMER_CARE",
+    "jurisdiction": "IN",
+    "product_scope": "GENERIC_RETAIL_PACKAGE",
+    "effective_from": "2016-01-01",
+    "evaluation_type": "REQUIRED_DECLARATION",
+    "parameters": {
+      "pass_reason": "Consumer-care declaration evidence was detected for this presence rule."
+    },
+    "source_reference": "LMPC (Amendment) Rules, 2015, Rule 6(2) (G.S.R. 385(E))",
+    "source_url": "https://consumeraffairs.nic.in/"
+  },
+  {
+    "rule_id": "CONSUMER_CARE_PHONE_PRESENCE",
+    "rule_version": "1.0",
+    "title": "Consumer Care Telephone Presence",
+    "description": "Evaluates whether consumer care telephone evidence was detected.",
+    "field": "CONSUMER_CARE",
+    "jurisdiction": "IN",
+    "product_scope": "GENERIC_RETAIL_PACKAGE",
+    "effective_from": "2016-01-01",
+    "evaluation_type": "REQUIRED_SUBFIELD",
+    "parameters": {
+      "subfield": "phone",
+      "pass_reason": "Consumer-care telephone evidence was detected for this rule."
+    },
+    "source_reference": "LMPC (Amendment) Rules, 2015, Rule 6(2) (G.S.R. 385(E))",
+    "source_url": "https://consumeraffairs.nic.in/"
+  },
+  {
+    "rule_id": "CONSUMER_CARE_EMAIL_PRESENCE",
+    "rule_version": "1.0",
+    "title": "Consumer Care E-mail Presence",
+    "description": "Evaluates whether consumer care e-mail evidence was detected.",
+    "field": "CONSUMER_CARE",
+    "jurisdiction": "IN",
+    "product_scope": "GENERIC_RETAIL_PACKAGE",
+    "effective_from": "2016-01-01",
+    "evaluation_type": "REQUIRED_SUBFIELD",
+    "parameters": {
+      "subfield": "email",
+      "pass_reason": "Consumer-care e-mail evidence was detected for this rule."
+    },
+    "source_reference": "LMPC (Amendment) Rules, 2015, Rule 6(2) (G.S.R. 385(E))",
+    "source_url": "https://consumeraffairs.nic.in/"
+  },
+  {
+    "rule_id": "COUNTRY_OF_ORIGIN_DECLARATION_PRESENCE",
+    "rule_version": "1.0",
+    "title": "Country of Origin Declaration Presence",
+    "description": "Verifies the presence of the country of origin, manufacture, or assembly for imported products.",
+    "field": "COUNTRY_OF_ORIGIN",
+    "jurisdiction": "INDIA_LMPC",
+    "product_scope": "GENERIC_RETAIL_PACKAGE",
+    "effective_from": "2018-01-01",
+    "evaluation_type": "REQUIRED_DECLARATION",
+    "parameters": {},
+    "source_reference": "LMPC Rules 2011, Rule 6(1)(aa) (as amended by G.S.R. 629(E), 23 June 2017)",
+    "source_url": "https://consumeraffairs.nic.in/sites/default/files/file-uploads/latestnews/LM_PCR_All_Amendements.pdf"
+  },
+  {
+    "rule_id": "COMMON_GENERIC_NAME_DECLARATION_PRESENCE",
+    "rule_version": "1.0",
+    "title": "Common/Generic Name Declaration Presence",
+    "description": "Verifies the presence of the common or generic name of the commodity.",
+    "field": "COMMON_GENERIC_NAME",
+    "jurisdiction": "INDIA_LMPC",
+    "product_scope": "GENERIC_RETAIL_PACKAGE",
+    "effective_from": "2011-04-01",
+    "evaluation_type": "REQUIRED_DECLARATION",
+    "parameters": {},
+    "source_reference": "LMPC Rules 2011, Rule 6(1)(b) (excluding multi-product completeness)",
+    "source_url": "https://consumeraffairs.nic.in/sites/default/files/uploads/legal-metrology-acts-rules/8.pdf"
+  },
+  {
+    "rule_id": "UNIT_SALE_PRICE_DECLARATION_PRESENCE",
+    "rule_version": "1.0",
+    "title": "Unit Sale Price Declaration Presence",
+    "description": "Verifies the presence of the unit sale price for non-exempt commodities. Amendment chain: introduced G.S.R. 779(E) (2 Nov 2021); substituted G.S.R. 226(E) (28 Mar 2022); exempted G.S.R. 722(E) (6 Oct 2023).",
+    "field": "UNIT_SALE_PRICE",
+    "jurisdiction": "INDIA_LMPC",
+    "product_scope": "GENERIC_RETAIL_PACKAGE",
+    "effective_from": "2024-01-01",
+    "evaluation_type": "REQUIRED_DECLARATION",
+    "parameters": {},
+    "source_reference": "LMPC Rules 2011, Rule 6(11) (introduced by G.S.R. 779(E), substituted by G.S.R. 226(E), amended by G.S.R. 722(E))",
+    "source_url": "https://consumeraffairs.nic.in/sites/default/files/file-uploads/latestnews/LM_PCR_All_Amendements.pdf"
+  },
+  {
+    "rule_id": "UNIT_SALE_PRICE_DENOMINATOR_CONSISTENCY",
+    "rule_version": "1.0",
+    "title": "Unit Sale Price Denominator Consistency",
+    "description": "Verifies that the printed unit sale price denominator complies with Rule 6(11) boundaries. Amendment chain: introduced G.S.R. 779(E) (2 Nov 2021); substituted G.S.R. 226(E) (28 Mar 2022); exempted G.S.R. 722(E) (6 Oct 2023).",
+    "field": "UNIT_SALE_PRICE",
+    "jurisdiction": "INDIA_LMPC",
+    "product_scope": "GENERIC_RETAIL_PACKAGE",
+    "effective_from": "2024-01-01",
+    "evaluation_type": "VALUE_PRESENT",
+    "parameters": {},
+    "source_reference": "LMPC Rules 2011, Rule 6(11) (introduced by G.S.R. 779(E), substituted by G.S.R. 226(E), amended by G.S.R. 722(E))",
+    "source_url": "https://consumeraffairs.nic.in/sites/default/files/file-uploads/latestnews/LM_PCR_All_Amendements.pdf"
+  },
+  {
+    "rule_id": "MONTH_YEAR_DECLARATION_PRESENCE",
+    "rule_version": "A",
+    "title": "Month/Year Declaration Presence (Pre-2024)",
+    "description": "Verifies presence of manufacture, packed, or import month/year.",
+    "field": "MONTH_YEAR",
+    "jurisdiction": "INDIA_LMPC",
+    "product_scope": "GENERIC_RETAIL_PACKAGE",
+    "effective_from": "2011-04-01",
+    "effective_to": "2023-12-31",
+    "evaluation_type": "REQUIRED_DECLARATION",
+    "parameters": {
+      "allowed_subtypes": ["MANUFACTURED", "PACKED", "IMPORTED"]
+    },
+    "source_reference": "LMPC Rules 2011, Rule 6(1)(d)",
+    "source_url": "https://consumeraffairs.nic.in/"
+  },
+  {
+    "rule_id": "MONTH_YEAR_DECLARATION_PRESENCE",
+    "rule_version": "B",
+    "title": "Month/Year Declaration Presence (2024+)",
+    "description": "Verifies presence of manufacture month/year only.",
+    "field": "MONTH_YEAR",
+    "jurisdiction": "INDIA_LMPC",
+    "product_scope": "GENERIC_RETAIL_PACKAGE",
+    "effective_from": "2024-01-01",
+    "evaluation_type": "REQUIRED_DECLARATION",
+    "parameters": {
+      "allowed_subtypes": ["MANUFACTURED"]
+    },
+    "source_reference": "LMPC Rules 2011, Rule 6(1)(d) (as amended by G.S.R. 779(E), effective date deferred to 01-01-2024 via G.S.R. 714(E))",
+    "source_url": "https://consumeraffairs.nic.in/"
+  }
+]

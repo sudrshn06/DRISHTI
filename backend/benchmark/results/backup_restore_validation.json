@@ -1,0 +1,11 @@
+{
+  "results": {
+    "db_counts_match": "PASS",
+    "minio_backup_durable": "PASS",
+    "sha_triple_match": "PASS",
+    "snapshot_equality": "PASS",
+    "tamper_test": "PASS"
+  },
+  "live_snapshot_hash": "02348327c02573d540ccf712c747984f9232b58849d50c19f2b4739c49060dee",
+  "restored_snapshot_hash": "02348327c02573d540ccf712c747984f9232b58849d50c19f2b4739c49060dee"
+}

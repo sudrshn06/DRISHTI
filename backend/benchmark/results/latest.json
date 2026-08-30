@@ -1,0 +1,103 @@
+{
+  "note": "pipeline_duration_sec includes image validation, quality metrics, OCR, extraction and legal rules evaluation.",
+  "summary": {
+    "total_images_processed": 6,
+    "successful_processing_count": 3,
+    "failed_processing_count": 3,
+    "non_terminal_quality_warning_count": 1,
+    "median_ocr_duration_sec": 34.2233,
+    "median_pipeline_duration_sec_includes_ocr": 12.1703,
+    "failure_category_counts": {
+      "CAPTURE_QUALITY_FAILURE": 3,
+      "OCR_RECOGNITION_FAILURE": 0,
+      "EXTRACTION_FAILURE": 1,
+      "ASSOCIATION_FAILURE": 0,
+      "NORMALIZATION_FAILURE": 0,
+      "CONTEXT_REQUIRED": 0,
+      "EVIDENCE_INSUFFICIENT": 0,
+      "LEGAL_RULE_FAILURE": 0,
+      "SYSTEM_ERROR": 0,
+      "NO_FAILURE": 2
+    }
+  },
+  "results": [
+    {
+      "package_id": "pack_coke",
+      "image_id": "img_coke_1",
+      "view": "FRONT",
+      "image_path": "tests/fixtures/real_world/coke_can.jpg",
+      "quality_outcome": "ACCEPTABLE",
+      "ocr_success": "YES",
+      "ocr_duration_sec": 34.2233,
+      "extracted_families": "MRP,CONSUMER_CARE,NET_QUANTITY,MONTH_YEAR,MONTH_YEAR,MANUFACTURER_PACKER_IMPORTER",
+      "pipeline_duration_sec": 34.3442,
+      "failure_taxonomy": "NO_FAILURE",
+      "error_message": ""
+    },
+    {
+      "package_id": "pack_shield",
+      "image_id": "img_shield_1",
+      "view": "FRONT",
+      "image_path": "tests/fixtures/real_world/pureshield_cleaner.jpg",
+      "quality_outcome": "RETAKE_RECOMMENDED",
+      "ocr_success": "YES",
+      "ocr_duration_sec": 11.9508,
+      "extracted_families": "",
+      "pipeline_duration_sec": 12.1703,
+      "failure_taxonomy": "EXTRACTION_FAILURE",
+      "error_message": ""
+    },
+    {
+      "package_id": "pack_soda",
+      "image_id": "img_soda_1",
+      "view": "FRONT",
+      "image_path": "tests/fixtures/real_world/real_soda_bottle.jpg",
+      "quality_outcome": "ACCEPTABLE",
+      "ocr_success": "YES",
+      "ocr_duration_sec": 15371.3074,
+      "extracted_families": "MANUFACTURER_PACKER_IMPORTER",
+      "pipeline_duration_sec": 15372.2332,
+      "failure_taxonomy": "NO_FAILURE",
+      "error_message": ""
+    },
+    {
+      "package_id": "pack_low_qual",
+      "image_id": "img_low_qual_1",
+      "view": "FRONT",
+      "image_path": "tests/fixtures/real_world/low_quality_black_bottle.jpg",
+      "quality_outcome": "RETAKE_RECOMMENDED",
+      "ocr_success": "NO",
+      "ocr_duration_sec": 0.0,
+      "extracted_families": "",
+      "pipeline_duration_sec": 3.7685,
+      "failure_taxonomy": "CAPTURE_QUALITY_FAILURE",
+      "error_message": "400: {'error': {'code': 'NO_USABLE_TEXT_DETECTED', 'message': 'PaddleOCR executed successfully but found no usable text.'}}"
+    },
+    {
+      "package_id": "pack_blank",
+      "image_id": "img_blank_1",
+      "view": "FRONT",
+      "image_path": "tests/fixtures/blank_image.jpg",
+      "quality_outcome": "RETAKE_RECOMMENDED",
+      "ocr_success": "NO",
+      "ocr_duration_sec": 0.0,
+      "extracted_families": "",
+      "pipeline_duration_sec": 1.2146,
+      "failure_taxonomy": "CAPTURE_QUALITY_FAILURE",
+      "error_message": "400: {'error': {'code': 'NO_USABLE_TEXT_DETECTED', 'message': 'PaddleOCR executed successfully but found no usable text.'}}"
+    },
+    {
+      "package_id": "pack_invalid",
+      "image_id": "img_invalid_1",
+      "view": "FRONT",
+      "image_path": "tests/fixtures/invalid_file.jpg",
+      "quality_outcome": "ACCEPTED",
+      "ocr_success": "NO",
+      "ocr_duration_sec": 0.0,
+      "extracted_families": "",
+      "pipeline_duration_sec": 0.0527,
+      "failure_taxonomy": "CAPTURE_QUALITY_FAILURE",
+      "error_message": "415: {'error': {'code': 'INVALID_FILE_TYPE', 'message': 'Only JPEG and PNG images are supported.'}}"
+    }
+  ]
+}
