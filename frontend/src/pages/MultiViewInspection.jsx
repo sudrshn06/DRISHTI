@@ -14,6 +14,7 @@ import {
   removePendingCapture,
   savePendingCapture,
 } from '../services/pendingCaptureStore';
+import { isRegulatoryEscalationAvailable } from '../services/regulatoryEscalation';
 import EvidenceImageViewer from '../components/ocr/EvidenceImageViewer';
 import EvidenceInspectorPanel, { PackagePresentationChecks } from '../components/ocr/EvidenceInspectorPanel';
 import DetectedPackageContextCard from '../components/inspection/DetectedPackageContextCard';
@@ -519,11 +520,7 @@ const MultiViewInspection = ({
   );
 
   const currentBadge = LIFECYCLE_BADGES[session.lifecycle_status] || LIFECYCLE_BADGES.IN_PROGRESS;
-  const hasNonCompliance = Boolean(
-    session.rule_evaluations?.some((result) => result.status === 'FAIL')
-    || session.food_label_evaluations?.some((result) => result.status === 'FAIL')
-    || session.visual_rule_evaluations?.some((result) => result.status === 'FAIL'),
-  );
+  const regulatoryEscalationAvailable = isRegulatoryEscalationAvailable(session);
   const readyToReviewReport = canFinalize && packageInfoReviewed && !needsDetectedContextConfirmation;
 
   // Process Progress Steps
@@ -533,7 +530,7 @@ const MultiViewInspection = ({
     { id: 'confirm', label: 'Confirm details', done: packageInfoReviewed && !needsDetectedContextConfirmation, active: hasCaptures && (!packageInfoReviewed || needsDetectedContextConfirmation) },
     { id: 'assessment', label: 'Assessment', done: hasAnalysis, active: hasCaptures && !hasAnalysis },
     { id: 'report', label: 'Report', done: isFinalized, active: readyToReviewReport },
-    { id: 'complaint', label: 'Complaint', done: isFinalized && !hasNonCompliance, active: isFinalized && hasNonCompliance },
+    { id: 'escalation', label: 'Escalation', done: isFinalized && !regulatoryEscalationAvailable, active: regulatoryEscalationAvailable },
   ];
 
   // Statutory Findings Counts
@@ -669,7 +666,7 @@ const MultiViewInspection = ({
             </h3>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className={`grid grid-cols-1 gap-4 ${regulatoryEscalationAvailable ? 'md:grid-cols-2' : 'md:max-w-2xl'}`}>
             <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-900/20">
               <div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
@@ -699,32 +696,23 @@ const MultiViewInspection = ({
               </div>
             </div>
 
-            <div className={`flex flex-col justify-between rounded-xl border p-4 ${hasNonCompliance ? 'border-rose-200 bg-rose-50/50 dark:border-rose-800 dark:bg-rose-950/15' : 'border-slate-200 bg-slate-50/60 dark:border-slate-700 dark:bg-slate-900/20'}`}>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  {hasNonCompliance ? 'Prepare complaint' : 'Complaint not required'}
-                </h4>
-                <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                  {hasNonCompliance
-                    ? 'Review the reasons, edit the complaint draft, and prepare the evidence package. Nothing is submitted without officer confirmation.'
-                    : advisoryReviewCount > 0
-                      ? 'No confirmed non-compliance finding. No complaint has been generated. Documented officer-review or physical-verification limitations remain in the inspection record.'
-                      : 'The finalized assessment does not contain a non-compliance finding.'}
-                </p>
+            {regulatoryEscalationAvailable && (
+              <div className="flex flex-col justify-between rounded-xl border border-red-200 bg-red-50/40 p-4 dark:border-red-800 dark:bg-red-950/15">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Regulatory escalation</h4>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                    Review the existing confirmed FAIL findings and evidence before deciding whether to proceed to an official portal. Nothing is submitted automatically.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onPrepareCase && onPrepareCase(session.inspection_id)}
+                  className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-red-700 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-800"
+                >
+                  <FileText size={18} /> Report Non-Compliance
+                </button>
               </div>
-              <div className="mt-4">
-                {hasNonCompliance ? (
-                  <button
-                    onClick={() => onPrepareCase && onPrepareCase(session.inspection_id)}
-                    className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-rose-700"
-                  >
-                    <FileText size={18} /> Prepare complaint
-                  </button>
-                ) : (
-                  <p className="rounded-lg bg-white/70 p-3 text-sm text-slate-500 dark:bg-slate-900/30 dark:text-slate-400">No external action is suggested.</p>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}

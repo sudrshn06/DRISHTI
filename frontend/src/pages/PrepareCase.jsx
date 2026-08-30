@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, Download, Share2, AlertCircle, CheckSquare, Shield, Info } from 'lucide-react';
 import { downloadEvidencePackage, getInspection } from '../services/api';
+import {
+  buildRegulatoryEscalationSummary,
+  formatEscalationDate,
+  formatFindingLabel,
+  getConfirmedFailFindings,
+  getFindingPresentation,
+  getProductIdentity,
+  isRegulatoryEscalationAvailable,
+} from '../services/regulatoryEscalation';
 
 const translateEnum = (val) => {
   if (!val) return '—';
@@ -31,12 +40,10 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
   const [success, setSuccess] = useState(false);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState({});
   const [draftInitialized, setDraftInitialized] = useState(false);
-  const [submissionConfirmed, setSubmissionConfirmed] = useState(false);
-  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [showPortalConfirmation, setShowPortalConfirmation] = useState(false);
 
   useEffect(() => {
     if (inspectionId) {
-      setLoading(true);
       getInspection(inspectionId)
         .then((data) => {
           setSession(data);
@@ -50,11 +57,9 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
     }
   }, [inspectionId]);
 
-  const allViolations = useMemo(() => [
-    ...(session?.rule_evaluations?.filter(r => r.status === 'FAIL') || []),
-    ...(session?.food_label_evaluations?.filter(r => r.status === 'FAIL') || []),
-    ...(session?.visual_rule_evaluations?.filter(r => r.status === 'FAIL') || []),
-  ], [session]);
+  const allViolations = useMemo(() => getConfirmedFailFindings(session), [session]);
+  const identity = useMemo(() => getProductIdentity(session), [session]);
+  const portalConfigured = Boolean(externalPortalUrl);
 
   const draftStorageKey = inspectionId ? `drishti_complaint_draft_${inspectionId}` : null;
 
@@ -63,36 +68,15 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
       if (draftStorageKey) {
         try {
           const savedDraft = JSON.parse(localStorage.getItem(draftStorageKey));
-          if (savedDraft?.complaintDraft) {
-            setComplaintDraft(savedDraft.complaintDraft);
+          if (savedDraft?.officerNotes) {
             setOfficerNotes(savedDraft.officerNotes || '');
-            setDraftInitialized(true);
-            return;
           }
         } catch {
           localStorage.removeItem(draftStorageKey);
         }
       }
 
-      const dateStr = session.reference_date || new Date().toISOString().split('T')[0];
-      const category = session.product_category || 'packaged commodity';
-      const genericName = session.aggregated_candidates?.find(c => c.field === 'COMMON_GENERIC_NAME')?.raw_value || '';
-      
-      let draft = `OFFICIAL INSPECTION COMPLAINT DRAFT\n`;
-      draft += `--------------------------------------------------\n`;
-      draft += `Date of Inspection: ${dateStr}\n`;
-      draft += `Commodity Name: ${genericName || 'Not detected'} (${translateEnum(category)})\n\n`;
-      draft += `During the official inspection of the packaged commodity, the following possible statutory non-compliance issue(s) were observed under the Legal Metrology Act and Packaged Commodity Rules:\n\n`;
-      
-      allViolations.forEach((rule, idx) => {
-        const name = rule.field ? rule.field.replace(/_/g, ' ') : rule.rule_id.replace(/_/g, ' ');
-        draft += `${idx + 1}. DECLARATION ISSUE: ${name}\n`;
-        draft += `   - Detail: ${rule.reason}\n`;
-        draft += `   - Applicable statutory provision: ${rule.legal_reference || 'Legal Metrology Rules'}\n\n`;
-      });
-      
-      draft += `The supporting package photographs, inspection report, and evidence record have been prepared for officer review.`;
-      setComplaintDraft(draft);
+      setComplaintDraft(buildRegulatoryEscalationSummary(session));
       setDraftInitialized(true);
     }
   }, [session, allViolations, draftStorageKey]);
@@ -106,7 +90,6 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
     setIsExporting(true);
     setError('');
     setSuccess(false);
-    setSubmissionConfirmed(false);
     try {
       await downloadEvidencePackage(session.inspection_id, {
         complaint_draft: complaintDraft,
@@ -121,14 +104,14 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
     }
   };
 
-  const handleContinueToPortal = () => {
-    if (!externalPortalUrl || !success || !submissionConfirmed) return;
-    setShowSubmissionModal(true);
+  const handleOpenPortalRequest = () => {
+    if (portalConfigured) setShowPortalConfirmation(true);
   };
 
   const handleConfirmedPortalHandoff = () => {
+    if (!portalConfigured) return;
     window.open(externalPortalUrl, '_blank', 'noopener,noreferrer');
-    setShowSubmissionModal(false);
+    setShowPortalConfirmation(false);
   };
 
   const toggleTechnical = (id) => {
@@ -160,6 +143,23 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
     );
   }
 
+  if (!isRegulatoryEscalationAvailable(session)) {
+    return (
+      <div className="max-w-xl mx-auto py-12 px-4 text-center space-y-4">
+        <Shield className="w-12 h-12 text-slate-500 mx-auto" />
+        <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200">Regulatory escalation unavailable</h2>
+        <p className="text-xs text-slate-500">
+          {session.lifecycle_status !== 'FINALIZED'
+            ? 'Regulatory escalation is available only after finalization.'
+            : 'This finalized inspection has no confirmed deterministic FAIL finding.'}
+        </p>
+        <button onClick={onBack} className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-xs font-bold rounded-lg border border-slate-250 hover:bg-slate-200 transition-all cursor-pointer">
+          Back
+        </button>
+      </div>
+    );
+  }
+
   return (
     <main className="portal-page space-y-6 py-6 sm:py-8">
       {/* Back CTA */}
@@ -176,10 +176,10 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
           <div>
             <h1 className="text-xl font-black text-slate-900 dark:text-slate-50 tracking-tight flex items-center gap-2">
               <Shield className="text-rose-600 dark:text-rose-400" size={20} />
-              Prepare complaint
+              Regulatory Escalation
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-              Review the reasons for non-compliance, edit the complaint draft, and prepare supporting evidence from the finalized inspection record.
+              This inspection contains confirmed findings that may require further regulatory action. Review the evidence before proceeding.
             </p>
           </div>
           <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300">
@@ -220,23 +220,31 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
               <div className="space-y-3.5">
                 {allViolations.map((violation, vIdx) => {
                   const isTechOpen = showTechnicalDetails[`v-${vIdx}`];
-                  const name = violation.field ? violation.field.replace(/_/g, ' ') : violation.rule_id.replace(/_/g, ' ');
+                  const presentation = getFindingPresentation(session, violation);
                   return (
                     <div key={vIdx} className="border border-rose-200/40 dark:border-rose-900/30 rounded-lg p-4 bg-rose-50/10 dark:bg-rose-950/5 space-y-3 text-xs">
                       <div className="flex items-center justify-between gap-2 border-b border-rose-100/30 pb-2">
                         <span className="font-bold text-rose-700 dark:text-rose-300">
-                          {name}
+                          {presentation.title}
                         </span>
                         <span className="text-[10px] text-slate-500 font-semibold px-2 py-0.5 bg-slate-100 dark:bg-slate-850 rounded">
-                          {violation.legal_reference || 'Legal Metrology Rules, 2011'}
+                          {presentation.legalReference || 'Legal reference not recorded'}
                         </span>
                       </div>
                       
                       <div>
                         <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Reason for non-compliance</div>
                         <p className="text-slate-750 dark:text-slate-300 leading-relaxed">
-                          {violation.reason}
+                          {presentation.reason}
                         </p>
+                      </div>
+
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <div><span className="font-bold text-slate-500">Observed evidence:</span> {presentation.observedValue}</div>
+                        <div><span className="font-bold text-slate-500">Source view:</span> {presentation.sourceViews.length ? presentation.sourceViews.map(formatFindingLabel).join(', ') : 'Not linked'}</div>
+                      </div>
+                      <div className="break-words font-mono text-[10px] text-slate-500">
+                        Evidence references: {presentation.evidenceIds.length ? presentation.evidenceIds.join(', ') : 'None recorded'}
                       </div>
 
                       <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-750">
@@ -253,9 +261,7 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
                         <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-250 dark:border-slate-800 rounded p-2.5 space-y-1.5 font-mono text-[10px] text-slate-650 dark:text-slate-400">
                           <div>Rule code: {violation.rule_id}</div>
                           <div>Status code: {violation.status}</div>
-                          {violation.evidence_ids?.length > 0 && (
-                            <div>Supporting evidence is retained in the inspection record.</div>
-                          )}
+                          <div>Domain: {formatFindingLabel(violation.domain)}</div>
                         </div>
                       )}
                     </div>
@@ -281,7 +287,6 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
                   onChange={(e) => {
                     setOfficerNotes(e.target.value);
                     setSuccess(false);
-                    setSubmissionConfirmed(false);
                   }}
                   placeholder="Enter custom remarks regarding package condition, distributor details, or inspection context..."
                   rows={3}
@@ -291,19 +296,15 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-350 mb-1.5">
-                  Complaint draft
+                  Structured complaint summary
                 </label>
                 <textarea
                   value={complaintDraft}
-                  onChange={(e) => {
-                    setComplaintDraft(e.target.value);
-                    setSuccess(false);
-                    setSubmissionConfirmed(false);
-                  }}
+                  readOnly
                   rows={10}
                   className="w-full rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                 />
-                <p className="mt-1.5 text-xs text-slate-500">Draft changes are saved on this device so the review can continue after an interruption.</p>
+                <p className="mt-1.5 text-xs text-slate-500">Built deterministically from confirmed FAIL findings; no Gemini drafting is used.</p>
               </div>
             </div>
           </div>
@@ -335,8 +336,24 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
               <div className="flex justify-between">
                 <span className="text-slate-500 font-medium">Product Name:</span>
                 <span className="font-bold text-slate-800 dark:text-slate-200 text-right max-w-[150px] truncate">
-                  {session.aggregated_candidates?.find(c => c.field === 'COMMON_GENERIC_NAME')?.raw_value || 'Not detected'}
+                  {identity.product}
                 </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Brand:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">{identity.brand || 'Not recorded'}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-slate-500 font-medium">Inspection reference:</span>
+                <span className="break-all text-right font-mono text-[10px] text-slate-800 dark:text-slate-200">{session.inspection_id}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-slate-500 font-medium">Finalization date:</span>
+                <span className="text-right font-bold text-slate-800 dark:text-slate-200">{formatEscalationDate(session)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Confirmed FAIL findings:</span>
+                <span className="font-bold text-rose-700 dark:text-rose-300">{allViolations.length}</span>
               </div>
             </div>
           </div>
@@ -344,7 +361,7 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
           {/* Action Box */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm space-y-4">
             <h3 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 uppercase tracking-wider border-b border-slate-100 dark:border-slate-700 pb-2">
-              Prepare evidence and submit
+              Regulatory action
             </h3>
             
             <button
@@ -353,31 +370,20 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
               className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-all shadow-sm hover:shadow-md cursor-pointer border border-indigo-700 disabled:opacity-50"
             >
               <Download size={14} />
-              {isExporting ? 'Preparing evidence package...' : 'Prepare evidence package'}
+              {isExporting ? 'Preparing evidence package...' : 'Download Evidence Package'}
             </button>
-
-            <label className={`flex items-start gap-3 rounded-xl border p-3 text-sm ${success ? 'cursor-pointer border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900/30' : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-900/20'}`}>
-              <input
-                type="checkbox"
-                checked={submissionConfirmed}
-                disabled={!success}
-                onChange={(event) => setSubmissionConfirmed(event.target.checked)}
-                className="mt-0.5 h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span>I have reviewed the complaint draft and downloaded evidence package.</span>
-            </label>
 
             <button
               type="button"
-              onClick={handleContinueToPortal}
-              disabled={!externalPortalUrl || !success || !submissionConfirmed}
+              onClick={handleOpenPortalRequest}
+              disabled={!portalConfigured}
               className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-700"
             >
-              <Share2 size={17} /> Review before submission
+              <Share2 size={17} /> Open Official Complaint Portal
             </button>
 
-            {!externalPortalUrl && (
-              <p className="text-center text-xs text-slate-500">Official portal link is not configured.</p>
+            {!portalConfigured && (
+              <p className="text-center text-xs text-slate-500">External complaint portal is not configured.</p>
             )}
 
             <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/15 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30 text-[11px] text-slate-500 dark:text-slate-450 leading-relaxed flex gap-2">
@@ -390,7 +396,7 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
         </div>
       </div>
 
-      {showSubmissionModal && (
+      {showPortalConfirmation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4" role="presentation">
           <div className="w-full max-w-md space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800" role="dialog" aria-modal="true" aria-labelledby="submission-confirm-title">
             <div>
@@ -402,7 +408,7 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => setShowSubmissionModal(false)}
+                onClick={() => setShowPortalConfirmation(false)}
                 className="min-h-12 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 dark:border-slate-600 dark:text-slate-200"
               >
                 Go back
@@ -412,7 +418,7 @@ export const PrepareCase = ({ inspectionId, onBack, externalPortalUrl }) => {
                 onClick={handleConfirmedPortalHandoff}
                 className="min-h-12 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700"
               >
-                Confirm and open official portal
+                Confirm and open portal
               </button>
             </div>
           </div>

@@ -1,0 +1,123 @@
+const FINDING_GROUPS = [
+  ['LEGAL_METROLOGY', 'rule_evaluations'],
+  ['FOOD_LABEL_FSSAI', 'food_label_evaluations'],
+  ['VISUAL_PRESENTATION', 'visual_rule_evaluations'],
+];
+
+const FINALIZED_FINDING_GROUPS = [
+  ['LEGAL_METROLOGY', 'declaration_findings'],
+  ['FOOD_LABEL_FSSAI', 'food_label_findings'],
+  ['VISUAL_PRESENTATION', 'visual_compliance_findings'],
+];
+
+const unique = (values) => [...new Set(values.filter(Boolean))];
+
+const humanize = (value) => String(value || '')
+  .replace(/_/g, ' ')
+  .replace(/\b\w/g, (character) => character.toUpperCase());
+
+const candidateValue = (candidate) => {
+  if (candidate?.raw_value) return candidate.raw_value;
+  const normalized = candidate?.normalized_value;
+  if (!normalized) return '';
+  if (typeof normalized === 'string') return normalized;
+  return Object.values(normalized).filter((value) => value != null && value !== '').join(' · ');
+};
+
+export const getConfirmedFailFindings = (session) => {
+  const source = session?.report_snapshot || session;
+  const groups = session?.report_snapshot ? FINALIZED_FINDING_GROUPS : FINDING_GROUPS;
+  return groups.flatMap(([domain, key]) => (
+    (source?.[key] || [])
+    .filter((finding) => finding.status === 'FAIL')
+    .map((finding) => ({ ...finding, domain }))
+  ));
+};
+
+export const isRegulatoryEscalationAvailable = (session) => (
+  session?.lifecycle_status === 'FINALIZED' && getConfirmedFailFindings(session).length > 0
+);
+
+export const getCandidate = (session, field) => (
+  (session?.aggregated_candidates || []).find((candidate) => (
+    candidate.field === field && candidate.status === 'DETECTED'
+  ))
+);
+
+export const getProductIdentity = (session) => ({
+  product: candidateValue(
+    getCandidate(session, 'COMMON_GENERIC_NAME')
+      || getCandidate(session, 'PRODUCT_NAME'),
+  ) || 'Not recorded',
+  brand: candidateValue(getCandidate(session, 'BRAND')) || '',
+});
+
+export const getFindingPresentation = (session, finding) => {
+  const evidenceIds = unique(finding.evidence_ids || []);
+  const directCaptureIds = finding.capture_ids || [];
+  const relatedCandidates = (session?.aggregated_candidates || []).filter((candidate) => (
+    candidate.field === finding.field
+    || (candidate.evidence_ids || []).some((id) => evidenceIds.includes(id))
+  ));
+  const candidateCaptureIds = relatedCandidates.flatMap((candidate) => candidate.capture_ids || []);
+  const captureIds = unique([...directCaptureIds, ...candidateCaptureIds]);
+  const sourceViews = unique((session?.captures || [])
+    .filter((capture) => (
+      captureIds.includes(capture.capture_id)
+      || (capture.field_candidates || []).some((candidate) => (
+        (candidate.evidence_ids || []).some((id) => evidenceIds.includes(id))
+      ))
+    ))
+    .map((capture) => capture.view_id));
+  const observedCandidate = relatedCandidates.find((candidate) => candidate.raw_value)
+    || relatedCandidates[0];
+  const evaluatedValue = finding.evaluated_value;
+  const observedValue = candidateValue(observedCandidate)
+    || (typeof evaluatedValue === 'string' || typeof evaluatedValue === 'number'
+      ? String(evaluatedValue)
+      : 'No observed value recorded');
+
+  return {
+    title: humanize(finding.title || finding.field || finding.rule_id || 'Confirmed requirement failure'),
+    legalReference: finding.source_reference || finding.legal_reference || '',
+    reason: finding.reason || 'No deterministic explanation was recorded.',
+    observedValue,
+    evidenceIds,
+    sourceViews,
+  };
+};
+
+export const buildRegulatoryEscalationSummary = (session) => {
+  const findings = getConfirmedFailFindings(session);
+  const { product, brand } = getProductIdentity(session);
+  const lines = [
+    'DRISHTI REGULATORY ESCALATION SUMMARY',
+    `Product: ${product}`,
+    ...(brand ? [`Brand: ${brand}`] : []),
+    `Inspection reference: ${session?.inspection_id || 'Not recorded'}`,
+    '',
+    'Confirmed failed requirements:',
+  ];
+
+  findings.forEach((finding, index) => {
+    const item = getFindingPresentation(session, finding);
+    lines.push(`${index + 1}. ${item.title}`);
+    lines.push(`   Legal reference: ${item.legalReference || 'Not recorded in the finalized finding'}`);
+    lines.push(`   Deterministic explanation: ${item.reason}`);
+    lines.push(`   Observed evidence: ${item.observedValue}`);
+    if (item.sourceViews.length) lines.push(`   Source view: ${item.sourceViews.map(humanize).join(', ')}`);
+    if (item.evidenceIds.length) lines.push(`   Evidence references: ${item.evidenceIds.join(', ')}`);
+  });
+
+  lines.push('', 'Officer-controlled handoff only. DRISHTI has not submitted a complaint.');
+  return lines.join('\n');
+};
+
+export const formatEscalationDate = (session) => {
+  const value = session?.report_snapshot?.metadata?.generated_at;
+  if (!value) return 'Not recorded';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+};
+
+export const formatFindingLabel = humanize;
