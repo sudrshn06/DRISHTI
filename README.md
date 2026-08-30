@@ -85,7 +85,7 @@ Services:
 |---|---|
 | Frontend | `http://localhost:3000` |
 | Backend API | `http://localhost:8000` |
-| API documentation | `http://localhost:8000/docs` |
+| API documentation | `http://localhost:8000/api/docs` |
 | Health check | `http://localhost:8000/api/health` |
 | PostgreSQL | `localhost:5432` |
 | MinIO API | `localhost:9000` |
@@ -142,3 +142,4 @@ DRISHTI/
 ## Legal notice
 
 DRISHTI provides evidence-backed decision support. Its output is not, by itself, a statutory finding, legal opinion, complaint, or enforcement action. An authorized officer must review the captured evidence, confirmed context, applicable provisions, and deterministic findings before finalization or external use.
+
