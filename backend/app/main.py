@@ -1,8 +1,7 @@
 """
 DRISHTI Backend — FastAPI Application Entry Point
 
-Phase 0: Health check endpoint only.
-No compliance features, OCR, AI, or inspection workflows.
+Evidence-first packaged commodity inspection and regulatory decision-support platform.
 """
 
 from fastapi import FastAPI
@@ -14,8 +13,8 @@ from app.api.routes import health
 app = FastAPI(
     title="DRISHTI API",
     description=(
-        "Legal Metrology Packaged-Commodity Inspection Platform — SIH26034. "
-        "Phase 0: Foundation."
+        "Evidence-first packaged commodity inspection and regulatory "
+        "decision-support platform."
     ),
     version="0.1.0",
     docs_url="/api/docs",
@@ -110,4 +109,3 @@ app.include_router(auth.router, prefix="/api", tags=["Auth"])
 
 from app.api.routes import rag
 app.include_router(rag.router, prefix="/api/rag", tags=["RAG"])
-

@@ -1,169 +1,144 @@
-# DRISHTI — SIH26034
+# DRISHTI
 
-**Legal Metrology Packaged-Commodity Inspection and Regulatory Intelligence Platform**
+**Packaged Commodity Inspection Portal — Every Label Counts**
 
----
+DRISHTI is an evidence-first packaged-commodity inspection and decision-support system for Legal Metrology inspectors. It helps an authenticated officer capture package surfaces, assess image quality, extract visible declarations, reconcile machine observations, apply deterministic regulatory rules, review evidence, and finalize an evidence-backed report.
 
-## What is DRISHTI?
+DRISHTI does not replace the inspecting officer. Gemini observations are contextual and advisory; they never make a legal decision. PaddleOCR is the sole OCR engine, deterministic Legal Metrology and scoped FSSAI label rules are authoritative, and officer approval is mandatory for finalization and any external portal handoff.
 
-DRISHTI converts package images into structured regulatory evidence and evaluates that evidence against applicable Legal Metrology (Packaged Commodities) Rules, 2011 requirements using a deterministic rule engine.
+## Implemented inspection flow
 
-It is built for Legal Metrology inspectors and enforcement officers to conduct structured, auditable, evidence-based packaged-commodity inspections.
+```text
+Capture
+  → Image Quality Validation
+  → PaddleOCR
+  → Contextual Vision
+  → Evidence Reconciliation
+  → Applicability and Evidence Sufficiency
+  → Deterministic Regulatory Rules
+  → Officer Review
+  → Finalized Evidence-backed Report
+```
 
-**SIH Reference:** SIH26034
+The default capture plan requires FRONT and BACK photographs and permits additional package surfaces. `FRONT` identifies the camera perspective; it is not automatically the statutory principal display panel. Completing the capture plan completes the requested workflow, but does not prove that every possible declaration-bearing surface was inspected. The active plan therefore keeps `absence_evaluation_eligible=False`.
 
----
+## Current capabilities
 
-## Current Development Phase
+- Guided desktop and mobile capture, including rear-camera input on supported phones.
+- Image decoding, file validation, SHA-256 integrity metadata, and OpenCV quality checks.
+- PaddleOCR text detection and recognition with confidence and source coordinates.
+- Optional Gemini contextual vision using a configured model and a constrained schema.
+- Hybrid evidence reconciliation with provider provenance, conflict review, and unsupported-inference blocking.
+- Officer-confirmed package information and append-only declaration corrections.
+- Deterministic Legal Metrology and scoped FSSAI label assessment.
+- Explicit `PASS`, `FAIL`, `REVIEW_REQUIRED`, and `NOT_APPLICABLE` rule outcomes.
+- PostgreSQL-backed inspections, users, report snapshots, and approved legal-help corpus.
+- MinIO object storage with authenticated, inspection-authorized image retrieval.
+- Inspection dashboard, history, rule library, evidence views, and responsive government-portal UI.
+- Immutable finalized report snapshots with PDF, DOCX, and evidence-package output.
+- Grounded legal-provision help over an approved local corpus.
+- JWT authentication, Argon2id password hashing, Inspector/Admin roles, and inspection ownership controls.
 
-**Phase 0 — Foundation**
+## Decision and safety model
 
-Infrastructure and scaffolding only. No compliance features are implemented yet.
+- A rule can pass only when its applicability, required evidence, and deterministic conditions are satisfied.
+- Missing or contradictory evidence produces review, not an invented value or unsupported legal absence.
+- A `FAIL` must be supported by rule-specific evidence and a legal reference.
+- `NOT_APPLICABLE` means the rule does not apply to the confirmed context; it is not a pass.
+- A finalized inspection is locked and auditable. Finalization is a workflow state, not a declaration that the product is compliant.
+- Provider failures are explicit. DRISHTI does not silently switch OCR engines, Gemini providers, or models, and it does not fabricate output.
 
----
+See [docs/6-absence-evaluation-safety.md](docs/6-absence-evaluation-safety.md) for the full absence-evaluation boundary.
 
-## Architecture (Approved)
+## Technology
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React + Vite + Tailwind CSS |
-| HTTP Client | Axios (sole client) |
-| State | React Context + useReducer |
-| Animations | Anime.js |
-| Backend | Python + FastAPI + Pydantic v2 |
-| Database | PostgreSQL + SQLAlchemy 2.x + Alembic |
-| OCR | PaddleOCR ONLY — not yet implemented |
-| Computer Vision | OpenCV — not yet implemented |
-| Legal Engine | Custom deterministic Python — not yet implemented |
-| Deployment | Docker + Docker Compose |
+| Layer | Implemented technology |
+|---|---|
+| Frontend | React 19, Vite, Tailwind CSS, Axios, Recharts, Lucide icons |
+| API | FastAPI, Pydantic, SQLAlchemy, Alembic |
+| OCR and image processing | PaddleOCR, PaddlePaddle, OpenCV |
+| Contextual vision | Google Gemini, configured as a non-authoritative provider |
+| Decision support | Deterministic Python Legal Metrology and scoped FSSAI label rules |
+| Data | PostgreSQL |
+| Object storage | MinIO |
+| Reports | ReportLab PDF, python-docx DOCX, evidence-package generation |
+| Authentication | JWT and Argon2id |
+| Local deployment | Docker Compose |
 
-**No fallback mechanisms exist or will be added.**
+## Run with Docker Compose
 
----
+Prerequisites:
 
-## Implementation Status
+- Docker Desktop with Docker Compose
+- Available ports `3000`, `8000`, `5432`, `9000`, and `9001`
+- Project environment configured locally; never commit secrets
 
-| Feature | Status |
-|---------|--------|
-| Project structure | ✅ Phase 0 |
-| Health endpoint (`GET /api/health`) | ✅ Phase 0 |
-| PostgreSQL connection | ✅ Phase 0 |
-| Alembic initialization | ✅ Phase 0 |
-| Docker Compose (frontend + backend + postgres) | ✅ Phase 0 |
-| Frontend app shell | ✅ Phase 0 |
-| Authentication / RBAC | 🔜 Phase 8 |
-| PaddleOCR integration | 🔜 Phase 1 |
-| Declaration classification | 🔜 Phase 2 |
-| Legal rule engine | 🔜 Phase 3 |
-| Evidence viewer | 🔜 Phase 4 |
-| Multi-panel inspection | 🔜 Phase 5 |
-| Image quality validation | 🔜 Phase 6 |
-| Calibrated measurement | 🔜 Phase 6 |
-| PDF/DOCX reports | 🔜 Phase 9 |
-| Dashboard / analytics | 🔜 Phase 10 |
-| RAG assistant | 🔜 Phase 11 (optional) |
-
----
-
-## Prerequisites
-
-- **Node.js** 18+ (`node --version`)
-- **npm** 9+ (`npm --version`)
-- **Python** 3.11+ (`python --version`)
-- **pip** (`pip --version`)
-- **Docker** (`docker --version`)
-- **Docker Compose** (`docker compose version`)
-
----
-
-## Running the Project
-
-### Option 1 — Docker Compose (recommended)
-
-Copy `.env.example` to `.env` and set a real `POSTGRES_PASSWORD`:
+From the repository root:
 
 ```bash
-cp .env.example .env
-docker compose up --build
+docker compose up -d --build
 ```
 
 Services:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- Backend health: http://localhost:8000/api/health
-- PostgreSQL: localhost:5432
 
-### Option 2 — Local development
+| Service | Address |
+|---|---|
+| Frontend | `http://localhost:3000` |
+| Backend API | `http://localhost:8000` |
+| API documentation | `http://localhost:8000/docs` |
+| Health check | `http://localhost:8000/api/health` |
+| PostgreSQL | `localhost:5432` |
+| MinIO API | `localhost:9000` |
+| MinIO console | `localhost:9001` |
 
-**Backend:**
+The frontend derives its default API hostname from the page being viewed, which supports approved LAN development origins without hardcoding a single workstation address.
 
-```bash
-cd backend
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# macOS/Linux:
-source .venv/bin/activate
+## Local development
 
-pip install -r requirements.txt
-cp ../.env.example .env   # edit DATABASE_URL to point to local postgres
-alembic upgrade head
-uvicorn app.main:app --reload --port 8000
-```
-
-**Frontend:**
+Backend dependencies and database/environment settings are defined under `backend/`. Frontend commands are run from `frontend/`:
 
 ```bash
-cd frontend
 npm install
 npm run dev
+npm test
+npm run lint
+npm run build
 ```
 
----
+Backend tests use `pytest`; database, object-storage, or live-provider tests require their corresponding services and credentials. Service failures must be reported separately from code regressions.
 
-## Ports
+## Repository guide
 
-| Service | Port |
-|---------|------|
-| Frontend | 3000 |
-| Backend API | 8000 |
-| PostgreSQL | 5432 |
-
----
-
-## Project Structure
-
-```
+```text
 DRISHTI/
-├── docs/               # Planning documents (approved, do not modify without review)
-│   ├── 1-product.md
-│   ├── 2-architecture.md
-│   ├── 3-rules.md      ← permanent engineering constraints
-│   ├── 4-phases.md
-│   └── 5-design.md
-├── frontend/           # React + Vite application
-├── backend/            # FastAPI application
-├── tests/              # Cross-cutting test utilities
-├── memory.md           # Live engineering state
-├── docker-compose.yml
-├── .env.example
-├── .gitignore
-└── README.md
+├── backend/
+│   ├── alembic/                 # Database migrations
+│   ├── app/
+│   │   ├── api/routes/          # Auth, inspection, OCR, dashboard, RAG
+│   │   ├── core/                # Configuration, security, middleware
+│   │   ├── models/              # SQLAlchemy persistence models
+│   │   ├── schemas/             # API and provider validation models
+│   │   └── services/            # OCR, vision, reconciliation, rules, reports
+│   └── tests/
+├── frontend/
+│   ├── src/
+│   │   ├── components/          # Inspection, evidence, auth, shared UI
+│   │   ├── pages/               # Dashboard, inspection, history, rules
+│   │   └── services/            # API, device queue, session state
+│   └── tests/
+├── docs/                        # Product, architecture, rules, history, design, safety
+└── docker-compose.yml
 ```
 
----
+## Documentation
 
-## Engineering Rules
+- [Product definition](docs/1-product.md)
+- [System architecture](docs/2-architecture.md)
+- [Engineering rules](docs/3-rules.md)
+- [Historical development plan](docs/4-phases.md)
+- [Current design system](docs/5-design.md)
+- [Absence-evaluation safety boundary](docs/6-absence-evaluation-safety.md)
 
-All development follows `/docs/3-rules.md` without exception. Key principles:
+## Legal notice
 
-- **One implementation per capability** — no fallback engines or duplicate providers
-- **Explicit failure** — no silent substitution
-- **Deterministic legal evaluation** — rule engine is the sole compliance authority
-- **Evidence-first** — all findings trace to source images and coordinates
-
----
-
-## Legal Notice
-
-DRISHTI evaluates packaged commodity compliance against Legal Metrology (Packaged Commodities) Rules, 2011. All regulatory rules must be verified against authoritative sources (Department of Consumer Affairs, official Gazette notifications). No legal requirement is invented.
+DRISHTI provides evidence-backed decision support. Its output is not, by itself, a statutory finding, legal opinion, complaint, or enforcement action. An authorized officer must review the captured evidence, confirmed context, applicable provisions, and deterministic findings before finalization or external use.

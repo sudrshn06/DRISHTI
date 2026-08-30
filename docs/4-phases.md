@@ -1,5 +1,7 @@
 # DRISHTI — Development Phases
 
+> **Historical planning document — not current implementation status.** This file preserves the original dependency-ordered development plan and its former future-tense/checklist language for project history. Multiple capabilities described below as planned, deferred, or optional are now implemented, while some planned roles and screens were not implemented. Do not use this document to determine current routes, roles, architecture, safety boundaries, or completion status. Use `README.md`, `docs/1-product.md`, `docs/2-architecture.md`, `docs/3-rules.md`, `docs/5-design.md`, `docs/6-absence-evaluation-safety.md`, and the application source instead.
+
 > Phases are dependency-ordered, not time-estimated.
 > Each phase must satisfy its exit criteria before the next phase begins.
 > Do not implement future phases early.

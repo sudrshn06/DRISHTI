@@ -1,8 +1,8 @@
 # Absence-evaluation safety boundary
 
-## Current Stage 1.5 invariant
+## Current invariant
 
-DRISHTI Stage 1.5 must not infer that a statutory declaration is legally absent from the current capture plan. The active plan remains configured as `absence_evaluation_eligible=False`. Completing the requested front and back photographs therefore completes the capture workflow, but it does not establish full-package coverage for an absence finding.
+DRISHTI must not infer that a statutory declaration is legally absent from the current capture plan. The active plan remains configured as `absence_evaluation_eligible=False`. Completing the requested front and back photographs therefore completes the capture workflow, but it does not establish full-package coverage for an absence finding.
 
 PaddleOCR remains the machine-observation engine. Gemini output remains advisory and outside authoritative compliance inputs. Deterministic Legal Metrology and FSSAI rules remain authoritative, and an authenticated officer must review package information and explicitly approve finalization and any external portal handoff.
 
@@ -35,9 +35,9 @@ Surface coverage and general image quality are necessary but not sufficient. Eac
 
 Every PASS, FAIL, review-required result, or future absence result must be traceable to the rule identifier, legal reference, capture identifier, evidence identifier or region, confirmed context, and deterministic reason. Evidence for one rule must not be reused as proof of an unseen declaration required by another rule.
 
-## Decision rule for Stage 1.5
+## Current decision rule
 
-For the active Stage 1.5 plan:
+For the active capture plan:
 
 1. Keep `absence_evaluation_eligible=False`.
 2. Keep evidence sufficiency at `INSUFFICIENT_FOR_ABSENCE_EVALUATION`, even when all currently requested views are present.
@@ -46,4 +46,4 @@ For the active Stage 1.5 plan:
 5. Require officer confirmation of the current package information after every new photograph or correction.
 6. Require explicit officer approval before finalizing the immutable report or opening an external complaint portal. DRISHTI must not submit a complaint automatically.
 
-Changing this boundary requires a later, explicit safety review, new capture-plan coverage, rule-specific tests, and officer-workflow validation. It is not part of Gemini Stage 2.
+Changing this boundary requires an explicit safety review, new capture-plan coverage, rule-specific tests, and officer-workflow validation. It is not enabled by the current capture plan.

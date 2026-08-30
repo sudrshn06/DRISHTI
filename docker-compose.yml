@@ -51,7 +51,7 @@ services:
       - PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
       - GEMINI_ENABLED=${GEMINI_ENABLED:-false}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.7-flash}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3-flash-preview}
       - GEMINI_TIMEOUT_SECONDS=${GEMINI_TIMEOUT_SECONDS:-12}
       - GEMINI_CONTEXT_MIN_CONFIDENCE=${GEMINI_CONTEXT_MIN_CONFIDENCE:-0.75}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-drishti_dev_insecure_jwt_secret_key_change_in_production}

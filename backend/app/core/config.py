@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # Optional Gemini package understanding (advisory observations only)
     gemini_enabled: bool = False
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-3.7-flash"
+    gemini_model: str = "gemini-3-flash-preview"
     gemini_timeout_seconds: float = 12.0
     gemini_context_min_confidence: float = 0.75
 
