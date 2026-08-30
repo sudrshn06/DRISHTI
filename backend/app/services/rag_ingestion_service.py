@@ -22,6 +22,22 @@ APPROVED_CORPUS: List[Dict[str, Any]] = [
         )
     },
     {
+        "chunk_id": "c1607777-7777-7777-7777-777777777777",
+        "document_id": "pc_rules_2011",
+        "title": "Legal Metrology (Packaged Commodities) Rules, 2011 - Rule 7",
+        "regulatory_domain": "LEGAL_METROLOGY",
+        "provision_number": "Rule 7",
+        "notification_date": date(2011, 3, 7),
+        "effective_from": date(2011, 4, 1),
+        "official_source": "Department of Consumer Affairs - Legal Metrology (Packaged Commodities) Rules, 2011, as amended",
+        "content": (
+            "Rule 7 governs the principal display panel, its area, size and lettering requirements. "
+            "The height of numerals and letters used for declarations must comply with the prescribed Table I. "
+            "The width of a letter or numeral shall generally not be less than one-third of its height, "
+            "subject to the specified exceptions."
+        )
+    },
+    {
         "chunk_id": "c1622222-2222-2222-2222-222222222222",
         "document_id": "pc_rules_2011",
         "title": "Legal Metrology (Packaged Commodities) Rules, 2011 - Rule 8",
@@ -31,9 +47,10 @@ APPROVED_CORPUS: List[Dict[str, Any]] = [
         "effective_from": date(2011, 4, 1),
         "official_source": "Ministry of Consumer Affairs Gazette, G.S.R. 202(E)",
         "content": (
-            "Rule 8 mandates that all declarations on pre-packaged commodities shall be conspicuous, legible, "
-            "and prominent. The font size of declarations must meet minimum height thresholds depending on net quantity "
-            "(e.g., minimum 1 mm to 8 mm depending on packaging surface area and shape)."
+            "Rule 8 provides where statutory declarations must appear. Every declaration required under "
+            "the Legal Metrology (Packaged Commodities) Rules shall appear on the principal display panel. "
+            "The area surrounding the quantity declaration must also be kept free from printed information "
+            "within the clear-space requirements prescribed by the Rule."
         )
     },
     {
@@ -46,8 +63,10 @@ APPROVED_CORPUS: List[Dict[str, Any]] = [
         "effective_from": date(2011, 4, 1),
         "official_source": "Ministry of Consumer Affairs Gazette, G.S.R. 202(E)",
         "content": (
-            "Rule 9 requires declarations to be grouped together and placed on the principal display panel (PDP) "
-            "of the package. It ensures that consumers can easily read vital statutory information in a single viewing area."
+            "Rule 9 prescribes the manner in which declarations shall be made. Required declarations must "
+            "be legible and prominent. The numerals used for retail sale price and net quantity must "
+            "contrast conspicuously with the background, subject to the specified exceptions. Declarations "
+            "must not be presented in a manner that requires them to be read through a liquid commodity."
         )
     },
     {
@@ -161,7 +180,7 @@ APPROVED_CORPUS: List[Dict[str, Any]] = [
         "provision_number": "First Amendment, 2026",
         "notification_date": date(2026, 3, 24),
         "effective_from": date(2027, 7, 1),
-        "official_source": "FSSAI Gazette Notification F. No. RAG-2026-01",
+        "official_source": "FSSAI Gazette Notification F. No. STD/SP-08/A1.2022/N-01",
         "content": (
             "The First Amendment, 2026 amends Regulation 5(3) with updates on serving size, per-serve RDA and serving information "
             "for infant nutrition, nutritional information exemptions for minimally processed and single-ingredient foods, "
