@@ -127,10 +127,11 @@ function App() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f5f7f9]">
-        <div className="text-center" role="status">
-          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-indigo-600" />
-          <p className="text-sm font-medium text-slate-600">Checking secure session…</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#f4f7f8]">
+        <div className="rounded-2xl border border-slate-200 bg-white px-10 py-8 text-center shadow-[0_18px_50px_rgba(16,42,67,0.10)]" role="status">
+          <div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-[3px] border-slate-200 border-t-[#087f83]" />
+          <p className="text-sm font-semibold text-slate-700">Checking secure session…</p>
+          <p className="mt-1 text-xs text-slate-500">Preparing your DRISHTI workspace</p>
         </div>
       </div>
     );
@@ -141,23 +142,36 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7f9] text-slate-800">
-      <header className="sticky top-0 z-40 border-b border-slate-300 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
-        <div className="bg-[#102a43] px-4 py-1.5 text-center text-[11px] font-semibold tracking-[0.08em] text-white sm:text-left">
-          <div className="mx-auto max-w-[1520px]">Packaged Commodity Inspection &amp; Decision Support</div>
+    <div className="min-h-screen bg-transparent text-slate-800">
+      <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-white/95 shadow-[0_8px_28px_rgba(16,42,67,0.06)] backdrop-blur-xl">
+        <div className="bg-[#102a43] px-4 py-1.5 text-center text-[10px] font-bold tracking-[0.14em] text-white sm:text-left">
+          <div className="mx-auto flex max-w-[1520px] items-center justify-between">
+            <span>PACKAGED COMMODITY INSPECTION &amp; DECISION SUPPORT</span>
+            <span className="hidden text-white/65 md:inline">Secure Officer Workspace</span>
+          </div>
         </div>
-        <div className="mx-auto flex max-w-[1520px] items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <button type="button" onClick={() => navigate('dashboard')} className="flex min-w-0 items-center text-left" aria-label="Open inspection dashboard">
+
+        <div className="mx-auto flex max-w-[1520px] items-center justify-between gap-5 px-4 py-3 sm:px-6">
+          <button
+            type="button"
+            onClick={() => navigate('dashboard')}
+            className="group flex min-w-0 items-center rounded-xl px-1.5 py-1 text-left"
+            aria-label="Open inspection dashboard"
+          >
             <span className="min-w-0">
               <picture>
                 <source media="(max-width: 639px)" srcSet={drishtiIcon} />
-                <img src={drishtiHeaderLogo} alt="DRISHTI" className="h-11 w-auto max-w-[52px] object-contain sm:h-10 sm:max-w-[205px]" />
+                <img
+                  src={drishtiHeaderLogo}
+                  alt="DRISHTI"
+                  className="h-11 w-auto max-w-[52px] object-contain transition-transform duration-200 group-hover:scale-[1.02] sm:h-10 sm:max-w-[205px]"
+                />
               </picture>
-              <span className="mt-0.5 hidden text-[10px] font-semibold text-slate-600 xl:block">Packaged Commodity Inspection Portal</span>
+              <span className="mt-0.5 hidden text-[10px] font-semibold tracking-wide text-slate-500 xl:block">Packaged Commodity Inspection Portal</span>
             </span>
           </button>
 
-          <nav className="hidden items-stretch gap-1 lg:flex" aria-label="Primary navigation">
+          <nav className="hidden items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50/80 p-1.5 lg:flex" aria-label="Primary navigation">
             {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
               const active = activeView === id || (id === 'multi-view' && activeView === 'prepare-case');
               return (
@@ -165,29 +179,36 @@ function App() {
                   key={id}
                   type="button"
                   onClick={() => id === 'multi-view' ? handleStartNewInspection() : navigate(id)}
-                  className={`flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-semibold transition-colors duration-200 ${active ? 'border-[#163a5f] text-[#163a5f]' : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900'}`}
+                  className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all duration-200 ${active ? 'bg-white text-[#102a43] shadow-[0_3px_10px_rgba(16,42,67,0.10)] ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white/80 hover:text-[#102a43]'}`}
                   aria-current={active ? 'page' : undefined}
                 >
-                  <Icon size={16} aria-hidden="true" /> {label}
+                  <Icon size={16} className={active ? 'text-[#087f83]' : ''} aria-hidden="true" /> {label}
                 </button>
               );
             })}
             {selectedInspectionId && activeView === 'multi-view' && (
-              <span className="ml-1 flex items-center gap-2 border-l border-slate-300 px-3 text-sm font-semibold text-[#163a5f]">
+              <span className="ml-1 flex items-center gap-2 rounded-xl bg-[#e8f6f5] px-3 py-2 text-sm font-semibold text-[#087f83]">
                 <ClipboardCheck size={16} aria-hidden="true" /> Inspection Record
               </span>
             )}
           </nav>
 
-          <div className="flex shrink-0 items-center gap-2">
-            <div className="hidden items-center gap-2 border-r border-slate-300 pr-3 md:flex">
-              <User size={16} className="text-slate-500" aria-hidden="true" />
+          <div className="flex shrink-0 items-center gap-2.5">
+            <div className="hidden items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 md:flex">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#e8f6f5] text-[#087f83]">
+                <User size={16} aria-hidden="true" />
+              </div>
               <div className="leading-tight">
-                <div className="text-xs font-semibold text-slate-800">{currentUser.full_name || currentUser.username}</div>
-                <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{currentUser.role}</div>
+                <div className="max-w-[180px] truncate text-xs font-bold text-slate-800">{currentUser.full_name || currentUser.username}</div>
+                <div className="mt-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-slate-500">{currentUser.role}</div>
               </div>
             </div>
-            <button type="button" onClick={handleLogout} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100" aria-label="Sign out">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-[#102a43]"
+              aria-label="Sign out"
+            >
               <LogOut size={16} aria-hidden="true" /> <span className="hidden sm:inline">Sign out</span>
             </button>
           </div>
@@ -212,11 +233,11 @@ function App() {
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-slate-300 bg-white px-1 py-1.5 shadow-[0_-3px_12px_rgba(15,23,42,0.08)] lg:hidden" aria-label="Mobile navigation">
+      <nav className="fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 rounded-2xl border border-slate-200 bg-white/95 px-1.5 py-1.5 shadow-[0_10px_35px_rgba(16,42,67,0.16)] backdrop-blur-xl lg:hidden" aria-label="Mobile navigation">
         {NAV_ITEMS.map(({ id, mobileLabel, icon: Icon }) => {
           const active = activeView === id || (id === 'multi-view' && activeView === 'prepare-case');
           return (
-            <button key={id} type="button" onClick={() => id === 'multi-view' ? handleStartNewInspection() : navigate(id)} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-md px-1 text-[11px] font-semibold ${active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600'}`} aria-current={active ? 'page' : undefined}>
+            <button key={id} type="button" onClick={() => id === 'multi-view' ? handleStartNewInspection() : navigate(id)} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold ${active ? 'bg-[#e8f6f5] text-[#087f83]' : 'text-slate-500 hover:bg-slate-50 hover:text-[#102a43]'}`} aria-current={active ? 'page' : undefined}>
               <Icon size={18} aria-hidden="true" /> {mobileLabel}
             </button>
           );
