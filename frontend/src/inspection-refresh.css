@@ -1,0 +1,221 @@
+/* DRISHTI Inspect Product visual refresh.
+   Presentation-only overrides scoped to the inspection workspace. */
+
+/* Active inspection page */
+.portal-page.pb-40 {
+  --inspection-surface: #ffffff;
+  --inspection-muted-surface: #f7fafb;
+  --inspection-border: #d9e2e8;
+  --inspection-navy: #102a43;
+  --inspection-teal: #087f83;
+  --inspection-teal-soft: #e8f6f5;
+  --inspection-green: #278342;
+  --inspection-amber: #b7791f;
+  --inspection-shadow: 0 10px 28px rgba(16, 42, 67, 0.07);
+  scroll-behavior: smooth;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl,
+.portal-page.pb-40 #package-photo-section .bg-white.rounded-xl {
+  border-color: var(--inspection-border) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--inspection-shadow) !important;
+  background: var(--inspection-surface) !important;
+}
+
+/* Inspection record header */
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child {
+  position: relative;
+  overflow: hidden;
+  border-top: 3px solid var(--inspection-teal) !important;
+  padding: 20px !important;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto auto;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(8, 127, 131, 0.08), transparent 68%);
+  pointer-events: none;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child h1 {
+  color: var(--inspection-navy) !important;
+  letter-spacing: -0.015em;
+}
+
+/* Workflow steps */
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child > .flex.gap-2.overflow-x-auto {
+  gap: 8px !important;
+  margin-top: 2px;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child > .flex.gap-2.overflow-x-auto > div {
+  min-height: 48px;
+  border-radius: 12px !important;
+  background: #fbfcfd;
+}
+
+/* Keep status states restrained and legible */
+.portal-page.pb-40 .bg-indigo-600 {
+  background-color: var(--inspection-teal) !important;
+}
+
+.portal-page.pb-40 .hover\:bg-indigo-700:hover {
+  background-color: #066f73 !important;
+}
+
+.portal-page.pb-40 .text-indigo-600,
+.portal-page.pb-40 .text-indigo-700 {
+  color: var(--inspection-teal) !important;
+}
+
+.portal-page.pb-40 .bg-indigo-50 {
+  background-color: var(--inspection-teal-soft) !important;
+}
+
+.portal-page.pb-40 .border-indigo-500,
+.portal-page.pb-40 .border-indigo-600 {
+  border-color: var(--inspection-teal) !important;
+}
+
+/* Save/offline/guidance banners */
+.portal-page.pb-40 [role="status"],
+.portal-page.pb-40 [role="alert"] {
+  border-radius: 14px !important;
+  box-shadow: 0 4px 14px rgba(16, 42, 67, 0.04);
+}
+
+/* Main workspace */
+.portal-page.pb-40 #package-photo-section {
+  gap: 28px !important;
+}
+
+.portal-page.pb-40 .inspection-workspace-column {
+  gap: 28px !important;
+}
+
+.portal-page.pb-40 .workspace-photographs,
+.portal-page.pb-40 .workspace-assessment,
+.portal-page.pb-40 .workspace-package-information,
+.portal-page.pb-40 .workspace-details {
+  gap: 24px !important;
+}
+
+.portal-page.pb-40 #package-photo-section h2,
+.portal-page.pb-40 #package-photo-section h3,
+.portal-page.pb-40 #package-photo-section h4 {
+  color: var(--inspection-navy) !important;
+}
+
+/* Photograph capture card */
+.portal-page.pb-40 .workspace-photographs > .bg-white.rounded-xl {
+  padding: 22px !important;
+}
+
+.portal-page.pb-40 .workspace-photographs > .bg-white.rounded-xl > .grid > div.border.rounded-xl {
+  border-radius: 14px !important;
+  min-height: 68px;
+  background: #fbfcfd;
+  border-color: var(--inspection-border) !important;
+}
+
+.portal-page.pb-40 .workspace-photographs > .bg-white.rounded-xl > .grid > div.border.rounded-xl:hover {
+  border-color: #9fb9c1 !important;
+  background: #f7fafb !important;
+  box-shadow: 0 6px 18px rgba(16, 42, 67, 0.05);
+}
+
+.portal-page.pb-40 .workspace-photographs > .bg-white.rounded-xl > .grid > div.border.rounded-xl.border-indigo-500 {
+  border-color: var(--inspection-teal) !important;
+  background: var(--inspection-teal-soft) !important;
+  box-shadow: 0 0 0 2px rgba(8, 127, 131, 0.10);
+}
+
+/* Capture progress bar */
+.portal-page.pb-40 .workspace-photographs .h-2.rounded-full.bg-indigo-600 {
+  background: var(--inspection-teal) !important;
+}
+
+/* Legal assessment and evidence areas */
+.portal-page.pb-40 .workspace-assessment > .bg-white.rounded-xl,
+.portal-page.pb-40 .workspace-package-information > .bg-white.rounded-xl,
+.portal-page.pb-40 .workspace-details > .bg-white.rounded-xl {
+  padding: 22px !important;
+}
+
+.portal-page.pb-40 .workspace-assessment .text-amber-600,
+.portal-page.pb-40 .workspace-assessment .text-amber-700,
+.portal-page.pb-40 .workspace-assessment .text-amber-800 {
+  color: #9a6518 !important;
+}
+
+/* Buttons: consistent regulatory-workspace geometry */
+.portal-page.pb-40 button,
+.portal-page.pb-40 label[class*="cursor-pointer"] {
+  border-radius: 10px !important;
+}
+
+.portal-page.pb-40 button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.portal-page.pb-40 button:disabled {
+  box-shadow: none !important;
+}
+
+/* Finalized report area */
+.portal-page.pb-40 > .bg-white.rounded-xl.space-y-4 {
+  border-top: 3px solid var(--inspection-green) !important;
+}
+
+/* Start-inspection state: same visual language, no logic changes */
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 > .bg-white.rounded-xl {
+  border-radius: 18px !important;
+  border-color: var(--portal-border) !important;
+  border-top: 3px solid var(--portal-teal) !important;
+  box-shadow: var(--portal-shadow-soft) !important;
+  padding: 28px !important;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 > .bg-white.rounded-xl h2 {
+  color: var(--portal-navy) !important;
+  letter-spacing: -0.015em;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 .bg-indigo-50 {
+  background: var(--portal-teal-soft) !important;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 .text-indigo-600 {
+  color: var(--portal-teal) !important;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 .bg-indigo-600 {
+  background: var(--portal-navy) !important;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 .hover\:bg-indigo-700:hover {
+  background: var(--portal-navy-soft) !important;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 details {
+  border-radius: 12px !important;
+  background: #f8fafb;
+}
+
+@media (max-width: 767px) {
+  .portal-page.pb-40 > .bg-white.rounded-xl:first-child,
+  .portal-page.pb-40 #package-photo-section .bg-white.rounded-xl {
+    border-radius: 14px !important;
+  }
+
+  .portal-page.pb-40 .workspace-photographs > .bg-white.rounded-xl,
+  .portal-page.pb-40 .workspace-assessment > .bg-white.rounded-xl,
+  .portal-page.pb-40 .workspace-package-information > .bg-white.rounded-xl,
+  .portal-page.pb-40 .workspace-details > .bg-white.rounded-xl {
+    padding: 18px !important;
+  }
+}
