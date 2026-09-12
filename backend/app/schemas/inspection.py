@@ -7,6 +7,10 @@ from app.schemas.compliance import RuleEvaluationResult
 from app.schemas.visual_assessment import CaptureVisualAssessmentSummary, VisualRuleEvaluationResult
 from app.schemas.gemini import GeminiPackageAuditRecord, DetectedPackageContext
 from app.schemas.officer_review import OfficerDeclarationOverride, PackageInformationReview
+from app.schemas.reproducibility import (
+    CaptureProcessingProvenance,
+    InspectionReproducibilityRecord,
+)
 
 class ClarificationOption(BaseModel):
     id: str = Field(..., description="Unique option identifier")
@@ -72,6 +76,15 @@ class CaptureRecord(BaseModel):
     quality_assessment: Optional[ImageQualityAssessment] = Field(None, description="Image quality results")
     visual_assessment: Optional[CaptureVisualAssessmentSummary] = Field(None, description="Visual compliance evidence assessment summary")
     field_candidates: List[FieldCandidate] = Field(default_factory=list, description="Extracted fields from this capture")
+    deterministic_field_candidates: Optional[List[FieldCandidate]] = Field(
+        None,
+        exclude=True,
+        description="Persisted OCR-only candidates used at the deterministic legal boundary",
+    )
+    processing_provenance: Optional[CaptureProcessingProvenance] = Field(
+        None,
+        description="OCR and preprocessing versions used for this capture",
+    )
     ai_analysis: Optional[GeminiPackageAuditRecord] = Field(None, description="Append-only AI_OBSERVED package-reading audit record, outside compliance inputs")
     status: str = Field("ACCEPTED", description="Status of the capture, e.g., ACCEPTED, RETAKE_RECOMMENDED")
     pipeline_status: str = Field("COMPLETED", description="Status of the processing pipeline, e.g., COMPLETED, OCR_SUCCESS_NO_TEXT, FAILED")
@@ -79,7 +92,7 @@ class CaptureRecord(BaseModel):
     @field_validator("field_candidates")
     @classmethod
     def field_candidates_must_be_authoritative(cls, candidates: List[FieldCandidate]) -> List[FieldCandidate]:
-        """Keep AI observations structurally outside authoritative candidates."""
+        """Keep raw AI observations outside the officer-facing candidate stream."""
         if any(not is_authoritative_field_candidate(candidate) for candidate in candidates):
             raise ValueError(
                 "AI_OBSERVED/Gemini candidates must remain in the dedicated AI audit boundary"
@@ -108,6 +121,11 @@ class InspectionSession(BaseModel):
     )
     captures: List[CaptureRecord] = Field(default_factory=list, description="All captures taken in this session")
     aggregated_candidates: List[FieldCandidate] = Field(default_factory=list, description="Fields aggregated across all captures")
+    deterministic_aggregated_candidates: Optional[List[FieldCandidate]] = Field(
+        None,
+        exclude=True,
+        description="OCR/officer-confirmed candidates used by deterministic legal rules",
+    )
     rule_evaluations: Optional[List[RuleEvaluationResult]] = Field(None, description="Final compliance rules evaluated on aggregated fields")
     food_label_evaluations: Optional[List[RuleEvaluationResult]] = Field(default_factory=list, description="Food labelling compliance rules evaluated on aggregated fields")
     visual_rule_evaluations: Optional[List[VisualRuleEvaluationResult]] = Field(default_factory=list, description="Visual compliance evaluations for Rule 7, Rule 8, Rule 9")
@@ -130,3 +148,7 @@ class InspectionSession(BaseModel):
     created_by_user_id: Optional[str] = Field(None, description="User ID of the inspector who created this inspection session")
     report_snapshot: Optional[Any] = Field(None, description="Immutable snapshot of the generated inspection report")
     overall_disposition: Optional[str] = Field(None, description="Overall inspection disposition e.g. VIOLATIONS_FOUND, NO_VIOLATIONS_DETECTED_IN_EVALUATED_SCOPE, REVIEW_REQUIRED, INCOMPLETE_INSPECTION")
+    reproducibility: Optional[InspectionReproducibilityRecord] = Field(
+        None,
+        description="Canonical deterministic inputs, rule outputs, and stable result fingerprint",
+    )

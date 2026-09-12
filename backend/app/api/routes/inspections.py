@@ -45,6 +45,10 @@ import zipfile
 import io
 import json
 from app.schemas.case import CaseExportRequest
+from app.services.reproducibility_service import (
+    build_reproducibility_record,
+    default_capture_processing_provenance,
+)
 
 router = APIRouter()
 
@@ -560,6 +564,8 @@ async def upload_capture(
         quality_assessment=quality_assessment,
         visual_assessment=visual_assessment,
         field_candidates=reconciled_candidates,
+        deterministic_field_candidates=paddle_candidates,
+        processing_provenance=default_capture_processing_provenance(),
         ai_analysis=gemini_audit,
         status=quality_assessment.quality_status,
         pipeline_status=pipeline_status
@@ -846,8 +852,11 @@ def compute_active_clarification(session: InspectionSession) -> Optional[Clarifi
 
 def _update_session_compliance(session: InspectionSession):
     if reference_date_obj := datetime.strptime(session.reference_date, "%Y-%m-%d").date():
+        legal_candidates = session.deterministic_aggregated_candidates
+        if legal_candidates is None:
+            legal_candidates = session.aggregated_candidates
         session.rule_evaluations = orchestrate_compliance(
-            candidates=session.aggregated_candidates,
+            candidates=legal_candidates,
             reference_date=reference_date_obj,
             product_category=session.product_category,
             product_origin=session.product_origin,
@@ -864,7 +873,7 @@ def _update_session_compliance(session: InspectionSession):
         if session.regulatory_product_class == "FOOD":
             from app.services.fssai_compliance_service import evaluate_fssai_compliance
             session.food_label_evaluations = evaluate_fssai_compliance(
-                candidates=session.aggregated_candidates,
+                candidates=legal_candidates,
                 reference_date=reference_date_obj,
                 evidence_sufficiency=session.evidence_sufficiency
             )
@@ -889,9 +898,10 @@ def _update_session_compliance(session: InspectionSession):
         
         session.visual_rule_evaluations = evaluate_visual_legal_rules(
             captures=session.captures,
-            aggregated_candidates=session.aggregated_candidates,
+            aggregated_candidates=legal_candidates,
             reference_date=reference_date_obj
         )
+        session.reproducibility = build_reproducibility_record(session)
 
 @router.post("/{inspection_id}/clarifications/dismiss", response_model=InspectionSession)
 async def dismiss_clarification(

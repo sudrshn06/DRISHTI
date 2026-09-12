@@ -71,6 +71,25 @@ class InspectionRepository:
         qa_dict = capture.quality_assessment.model_dump() if hasattr(capture.quality_assessment, "model_dump") else capture.quality_assessment
         va_dict = capture.visual_assessment.model_dump() if hasattr(capture.visual_assessment, "model_dump") else capture.visual_assessment
         cands_list = [c.model_dump() if hasattr(c, "model_dump") else c for c in capture.field_candidates]
+        deterministic_cands = capture.deterministic_field_candidates
+        if deterministic_cands is None:
+            from app.services.reproducibility_service import deterministic_candidates_for_capture
+            deterministic_cands = deterministic_candidates_for_capture(capture)
+        deterministic_cands_list = [
+            c.model_dump() if hasattr(c, "model_dump") else c
+            for c in deterministic_cands
+        ]
+        provenance_dict = (
+            capture.processing_provenance.model_dump()
+            if hasattr(capture.processing_provenance, "model_dump")
+            else capture.processing_provenance
+        )
+        candidates_payload = {
+            "schema_version": "2.0",
+            "candidates": cands_list,
+            "deterministic_candidates": deterministic_cands_list,
+            "processing_provenance": provenance_dict,
+        }
         ai_dict = capture.ai_analysis.model_dump(mode="json") if hasattr(capture.ai_analysis, "model_dump") else capture.ai_analysis
 
         return CaptureModel(
@@ -87,7 +106,7 @@ class InspectionRepository:
             pipeline_status=capture.pipeline_status,
             quality_assessment=qa_dict,
             visual_assessment=va_dict,
-            field_candidates=cands_list,
+            field_candidates=candidates_payload,
             ai_analysis=ai_dict,
         )
 
@@ -347,14 +366,35 @@ class InspectionRepository:
 
         qa = ImageQualityAssessment.model_validate(cap_model.quality_assessment) if cap_model.quality_assessment else None
         va = CaptureVisualAssessmentSummary.model_validate(cap_model.visual_assessment) if cap_model.visual_assessment else None
+        stored_candidates = cap_model.field_candidates or []
+        if isinstance(stored_candidates, dict):
+            candidate_rows = stored_candidates.get("candidates", [])
+            deterministic_rows = stored_candidates.get("deterministic_candidates")
+            provenance_row = stored_candidates.get("processing_provenance")
+        else:
+            candidate_rows = stored_candidates
+            deterministic_rows = None
+            provenance_row = None
+
         cands = [
             candidate
             for candidate in (
                 FieldCandidate.model_validate(c)
-                for c in (cap_model.field_candidates or [])
+                for c in candidate_rows
             )
             if is_authoritative_field_candidate(candidate)
         ]
+        deterministic_cands = (
+            [FieldCandidate.model_validate(c) for c in deterministic_rows]
+            if deterministic_rows is not None
+            else None
+        )
+        from app.schemas.reproducibility import CaptureProcessingProvenance
+        provenance = (
+            CaptureProcessingProvenance.model_validate(provenance_row)
+            if provenance_row
+            else None
+        )
         ai_analysis = None
         if cap_model.ai_analysis:
             if "analysis" in cap_model.ai_analysis:
@@ -386,6 +426,8 @@ class InspectionRepository:
             quality_assessment=qa,
             visual_assessment=va,
             field_candidates=cands,
+            deterministic_field_candidates=deterministic_cands,
+            processing_provenance=provenance,
             ai_analysis=ai_analysis,
             status=cap_model.status,
             pipeline_status=cap_model.pipeline_status
@@ -406,11 +448,22 @@ class InspectionRepository:
             else None
         )
 
-        # Rebuild through the same authoritative aggregation and officer overlay
-        # used for live sessions. AI observations never enter this boundary.
+        # Rebuild both the officer-facing hybrid view and the separate OCR-only
+        # legal input stream through the same stable aggregation and overrides.
         from app.services.officer_review_service import apply_officer_overrides
         from app.services.inspection_service import aggregate_candidates
+        from app.services.reproducibility_service import deterministic_candidates_for_capture
         all_cands = apply_officer_overrides(aggregate_candidates(captures_domain), overrides)
+        deterministic_captures = [
+            capture.model_copy(update={
+                "field_candidates": deterministic_candidates_for_capture(capture),
+            })
+            for capture in captures_domain
+        ]
+        deterministic_cands = apply_officer_overrides(
+            aggregate_candidates(deterministic_captures),
+            overrides,
+        )
 
         latest_snapshot = None
         if model.lifecycle_status == "FINALIZED" and model.report_snapshots:
@@ -433,6 +486,7 @@ class InspectionRepository:
             lifecycle_status=getattr(model, "lifecycle_status", "DRAFT") or "DRAFT",
             captures=captures_domain,
             aggregated_candidates=all_cands,
+            deterministic_aggregated_candidates=deterministic_cands,
             dismissed_clarifications=list(model.dismissed_clarifications or []),
             package_information_review=review,
             officer_declaration_overrides=overrides,

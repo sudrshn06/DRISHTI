@@ -1,3 +1,4 @@
+import json
 from typing import List, Dict, Any
 from collections import defaultdict
 from app.schemas.inspection import CapturePlan, CaptureRecord
@@ -80,6 +81,25 @@ def _normalize_value_to_hashable(val: Any) -> Any:
         return tuple(sorted((k, _normalize_value_to_hashable(v)) for k, v in val.items()))
     return val
 
+
+def _semantic_candidate_key(candidate: FieldCandidate) -> str:
+    payload = candidate.model_dump(
+        mode="json",
+        exclude={"capture_ids", "evidence_ids", "confidence", "provider_evidence"},
+    )
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+
+
+def _stable_capture_key(capture: CaptureRecord) -> tuple[str, str, tuple[str, ...]]:
+    candidates = capture.deterministic_field_candidates
+    if candidates is None:
+        candidates = capture.field_candidates
+    return (
+        capture.view_id,
+        capture.image_sha256 or "",
+        tuple(sorted(_semantic_candidate_key(candidate) for candidate in candidates)),
+    )
+
 def aggregate_candidates(captures: List[CaptureRecord]) -> List[FieldCandidate]:
     """
     Aggregates FieldCandidates from multiple captures.
@@ -88,20 +108,22 @@ def aggregate_candidates(captures: List[CaptureRecord]) -> List[FieldCandidate]:
     # 1. Gather all candidates grouped by field name
     field_groups: Dict[str, List[tuple[FieldCandidate, str]]] = defaultdict(list)
     
-    # Sort captures by capture_id to guarantee deterministic ordering
-    sorted_captures = sorted(captures, key=lambda c: c.capture_id)
+    # Random database UUIDs must never determine candidate precedence.
+    sorted_captures = sorted(captures, key=_stable_capture_key)
     
     # 1a. Provenance-scoped suppression of weak redundant candidates across all captures
     all_cands = []
     for capture in sorted_captures:
-        # Defense in depth: CaptureRecord validation already rejects Gemini
-        # candidates, but models are mutable. Aggregation therefore excludes
-        # advisory observations again at the actual compliance boundary.
+        # Defense in depth: raw AI observations stay outside candidates. Stage
+        # 2C reconciled candidates remain available to the officer-facing view;
+        # the legal boundary uses the separately persisted deterministic stream.
         all_cands.extend([
-            (cand, capture.capture_id)
+            (cand.model_copy(deep=True), capture.capture_id)
             for cand in capture.field_candidates
             if is_authoritative_field_candidate(cand)
         ])
+
+    all_cands.sort(key=lambda item: (_semantic_candidate_key(item[0]), item[1]))
         
     filtered_cands = []
     for cand, cap_id in all_cands:
@@ -173,7 +195,8 @@ def aggregate_candidates(captures: List[CaptureRecord]) -> List[FieldCandidate]:
                     merged.evidence_ids.extend(cand.evidence_ids)
                     if cap_id not in merged.capture_ids:
                         merged.capture_ids.append(cap_id)
-                merged.evidence_ids = list(dict.fromkeys(merged.evidence_ids))
+                merged.evidence_ids = sorted(set(merged.evidence_ids))
+                merged.capture_ids = sorted(set(merged.capture_ids))
                 aggregated_results.append(merged)
             continue
             
@@ -278,7 +301,8 @@ def aggregate_candidates(captures: List[CaptureRecord]) -> List[FieldCandidate]:
                 merged.evidence_ids.extend(cand.evidence_ids)
                 if cap_id not in merged.capture_ids:
                         merged.capture_ids.append(cap_id)
-            merged.evidence_ids = list(dict.fromkeys(merged.evidence_ids))
+            merged.evidence_ids = sorted(set(merged.evidence_ids))
+            merged.capture_ids = sorted(set(merged.capture_ids))
             aggregated_results.append(merged)
         else:
             # Multiple unique normalized values -> True conflict!
@@ -303,7 +327,8 @@ def aggregate_candidates(captures: List[CaptureRecord]) -> List[FieldCandidate]:
                 merged.evidence_ids.extend(cand.evidence_ids)
                 if cap_id not in merged.capture_ids:
                     merged.capture_ids.append(cap_id)
-            merged.evidence_ids = list(dict.fromkeys(merged.evidence_ids))
+            merged.evidence_ids = sorted(set(merged.evidence_ids))
+            merged.capture_ids = sorted(set(merged.capture_ids))
             aggregated_results.append(merged)
 
     # Filter out NOT_DETECTED if there is any active candidate for the same base field.
