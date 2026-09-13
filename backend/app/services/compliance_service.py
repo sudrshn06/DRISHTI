@@ -8,6 +8,7 @@ from app.services.rule_engine import get_applicable_rules, evaluate_candidate
 
 from app.services.applicability_model import evaluate_applicability
 from app.schemas.applicability import ApplicabilityStatus
+from app.services.declaration_validity_service import evaluate_declaration_validity
 from decimal import Decimal
 
 def get_expected_usp_denominator(qty_val: float, qty_unit: str):
@@ -454,4 +455,11 @@ def orchestrate_compliance(
         result.applicability = decision
         results.append(result)
         
+    results.extend(evaluate_declaration_validity(
+        candidates=candidates,
+        applicable_rules=applicable_rules,
+        applicability_decisions=applicability_decisions,
+        reference_date=reference_date,
+        evidence_sufficiency=evidence_sufficiency,
+    ))
     return results

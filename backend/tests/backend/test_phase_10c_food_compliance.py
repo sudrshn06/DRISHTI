@@ -63,7 +63,7 @@ def test_02_fssai_rule_evaluation_logic():
         package_area_exemption=False
     )
     
-    assert len(results) == 6
+    assert len(results) == 7
     
     for r in results:
         if r.rule_id in ("FSSAI_VEG_NONVEG_SYMBOL", "FSSAI_LICENCE_PRESENCE"):
@@ -105,7 +105,7 @@ def test_03_compliance_orchestration_domain_separation():
     _update_session_compliance(session)
     
     assert session.food_label_evaluations is not None
-    assert len(session.food_label_evaluations) == 6
+    assert len(session.food_label_evaluations) == 7
     
     lic_rule = next(r for r in session.food_label_evaluations if r.rule_id == "FSSAI_LICENCE_PRESENCE")
     assert lic_rule.status == LegalStatus.REVIEW_REQUIRED

@@ -181,6 +181,48 @@ def evaluate_fssai_compliance(
             source_url="https://www.fssai.gov.in"
         ))
 
+    # 3a. Licence number format validity remains separate from presence/logo review.
+    # This service is invoked only for officer-confirmed FOOD context, so the
+    # validator cannot leak into Legal Metrology or non-food inspections.
+    licence_candidates = sorted(
+        (candidate for candidate in candidates if candidate.field == "FSSAI_LICENCE"),
+        key=lambda candidate: candidate.model_dump_json(),
+    )
+    detected_licences = [candidate for candidate in licence_candidates if candidate.status == "DETECTED"]
+    licence_values = {
+        re.sub(r"\D", "", candidate.raw_value or "")
+        for candidate in detected_licences
+    }
+    if not detected_licences:
+        licence_format_status = LegalStatus.REVIEW_REQUIRED
+        licence_format_reason = "FSSAI licence number format cannot be validated from missing or uncertain evidence."
+        licence_format_value = None
+    elif len(licence_values) != 1:
+        licence_format_status = LegalStatus.REVIEW_REQUIRED
+        licence_format_reason = "Conflicting FSSAI licence number evidence requires officer review."
+        licence_format_value = None
+    else:
+        licence_format_value = next(iter(licence_values))
+        if re.fullmatch(r"\d{14}", licence_format_value):
+            licence_format_status = LegalStatus.PASS
+            licence_format_reason = "Detected FSSAI licence number has the required 14-digit structure."
+        else:
+            licence_format_status = LegalStatus.FAIL
+            licence_format_reason = "Reliable FSSAI licence evidence does not have the required 14-digit structure."
+    results.append(RuleEvaluationResult(
+        rule_id="FSSAI_LICENCE_FORMAT_VALIDITY",
+        rule_version=rule_ver_2026,
+        field="FSSAI_LICENCE",
+        status=licence_format_status,
+        reason=f"{licence_format_reason}{amendment_2026_info}",
+        evaluated_value=licence_format_value,
+        evidence_ids=sorted({item for candidate in licence_candidates for item in candidate.evidence_ids}),
+        capture_ids=sorted({item for candidate in licence_candidates for item in candidate.capture_ids}),
+        reference_date=reference_date,
+        source_reference="Food Safety and Standards (Labelling and Display) Regulations, 2020 - Regulation 5(7)",
+        source_url="https://www.fssai.gov.in"
+    ))
+
     # 4. Allergen Declaration (Regulation 5(14))
     cand_all = find_cand("FSSAI_ALLERGENS")
     if cand_all and cand_all.status == "DETECTED":
