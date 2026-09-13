@@ -43,7 +43,17 @@ _TERMINAL_DATE_TYPES = {"BEST_BEFORE", "USE_BY", "EXPIRY"}
 
 
 def _candidate_key(candidate: FieldCandidate) -> str:
-    return json.dumps(candidate.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+    value = candidate.normalized_value
+    if hasattr(value, "model_dump"):
+        value = value.model_dump(mode="json")
+    return json.dumps({
+        "field": candidate.field,
+        "status": candidate.status,
+        "normalized_value": value,
+        "raw_value": candidate.raw_value,
+        "observation_layer": candidate.observation_layer,
+        "extraction_method": candidate.extraction_method,
+    }, sort_keys=True, separators=(",", ":"))
 
 
 def _sorted_candidates(
@@ -172,32 +182,32 @@ def _validate_mrp(
     reference_date: date,
 ) -> list[RuleEvaluationResult]:
     selected = _sorted_candidates(candidates, "MRP")
-    candidate, unresolved = _single_reliable_candidate(
-        "MRP_VALUE_FORMAT_VALIDITY", source_rule, decision, reference_date, selected
-    )
-    if unresolved:
-        tax_review = unresolved.model_copy(update={"rule_id": "MRP_TAX_WORDING_CONSISTENCY"})
-        return [unresolved, tax_review]
+    detected = [candidate for candidate in selected if candidate.status == "DETECTED"]
+    if not detected:
+        unresolved = _uncertain_or_missing(
+            "MRP_VALUE_FORMAT_VALIDITY", source_rule, decision, reference_date, selected,
+            "Declaration validity cannot be determined from missing, unparsed, or uncertain evidence.",
+        )
+        return [unresolved, unresolved.model_copy(update={"rule_id": "MRP_TAX_WORDING_CONSISTENCY"})]
 
-    value = candidate.normalized_value
+    values = [candidate.normalized_value for candidate in detected]
     reliable_raw_values = sorted({item.raw_value or "" for item in selected if item.status == "DETECTED"})
     raw = "\n".join(reliable_raw_values)
     has_retail_label = bool(re.search(r"\bM\.?R\.?P\.?\b|MAXIMUM\s+RETAIL\s+PRICE", raw, re.IGNORECASE))
     has_inr_marker = bool(re.search(r"(?:₹|\bRS\.?\b|\bINR\b)", raw, re.IGNORECASE))
-    valid_value = (
-        isinstance(value, MrpNormalized)
-        and value.currency.upper() == "INR"
-        and math.isfinite(value.amount)
-        and value.amount >= 0
-    )
-    if valid_value and (has_retail_label or has_inr_marker):
-        format_status = LegalStatus.PASS
-        format_reason = "MRP contains a finite non-negative INR value with a recognizable retail-price or currency marker."
-    elif isinstance(value, MrpNormalized) and (
+    invalid_values = [value for value in values if isinstance(value, MrpNormalized) and (
         value.currency.upper() != "INR" or not math.isfinite(value.amount) or value.amount < 0
-    ):
+    )]
+    unparsed_values = [value for value in values if not isinstance(value, MrpNormalized)]
+    if invalid_values:
         format_status = LegalStatus.FAIL
-        format_reason = "Reliable MRP evidence contains an invalid currency or numeric value."
+        format_reason = "At least one reliable MRP declaration contains an invalid currency or numeric value."
+    elif unparsed_values:
+        format_status = LegalStatus.REVIEW_REQUIRED
+        format_reason = "At least one reliable MRP declaration is structurally ambiguous; officer review is required."
+    elif values and (has_retail_label or has_inr_marker):
+        format_status = LegalStatus.PASS
+        format_reason = "All reliable parsed MRP declarations contain finite non-negative INR values with a recognizable retail-price or currency marker."
     else:
         format_status = LegalStatus.REVIEW_REQUIRED
         format_reason = "MRP evidence is incomplete or structurally ambiguous; officer review is required."
@@ -205,7 +215,8 @@ def _validate_mrp(
     format_result = _result(
         rule_id="MRP_VALUE_FORMAT_VALIDITY", field="MRP", status=format_status,
         reason=format_reason, source_rule=source_rule, decision=decision,
-        reference_date=reference_date, candidates=selected, evaluated_value=value,
+        reference_date=reference_date, candidates=selected,
+        evaluated_value=[value if value is not None else candidate.raw_value for candidate, value in zip(detected, values)],
     )
 
     inclusive = bool(re.search(r"\bINCLUS(?:IVE|ION)\b.{0,18}\b(?:ALL\s+)?(?:TAX(?:ES)?|GST)\b", raw, re.IGNORECASE))
@@ -218,12 +229,9 @@ def _validate_mrp(
         re.IGNORECASE,
     ))
     mentions_tax = bool(re.search(r"\b(?:TAX(?:ES)?|GST)\b", raw, re.IGNORECASE))
-    if inclusive and contradiction:
-        tax_status = LegalStatus.REVIEW_REQUIRED
-        tax_reason = "MRP tax wording is internally contradictory and requires officer review."
-    elif contradiction:
+    if contradiction:
         tax_status = LegalStatus.FAIL
-        tax_reason = "Reliable declaration states that tax/GST is extra or excluded, contradicting the retail sale price requirement that it be inclusive of all taxes."
+        tax_reason = "At least one reliable declaration states that tax/GST is extra or excluded, contradicting the retail sale price requirement that it be inclusive of all taxes."
     elif inclusive:
         tax_status = LegalStatus.PASS
         tax_reason = "MRP tax wording explicitly states that the retail sale price is inclusive of all taxes."
@@ -249,34 +257,38 @@ def _validate_net_quantity(
     reference_date: date,
 ) -> list[RuleEvaluationResult]:
     selected = _sorted_candidates(candidates, "NET_QUANTITY")
-    candidate, unresolved = _single_reliable_candidate(
-        "NET_QUANTITY_FORMAT_VALIDITY", source_rule, decision, reference_date, selected
-    )
-    if unresolved:
+    detected = [candidate for candidate in selected if candidate.status == "DETECTED"]
+    if not detected:
+        unresolved = _uncertain_or_missing(
+            "NET_QUANTITY_FORMAT_VALIDITY", source_rule, decision, reference_date, selected,
+            "Declaration validity cannot be determined from missing, unparsed, or uncertain evidence.",
+        )
         return [
             unresolved,
             unresolved.model_copy(update={"rule_id": "NET_QUANTITY_UNIT_VALIDITY"}),
         ]
-    value = candidate.normalized_value
-    if not isinstance(value, NetQuantityNormalized):
-        format_status, format_reason = LegalStatus.REVIEW_REQUIRED, "Net quantity could not be parsed into a numeric value and unit."
-        unit_status, unit_reason = LegalStatus.REVIEW_REQUIRED, "Net quantity unit could not be parsed reliably."
+    values = [candidate.normalized_value for candidate in detected]
+    typed_values = [value for value in values if isinstance(value, NetQuantityNormalized)]
+    if any(not math.isfinite(value.value) or value.value <= 0 for value in typed_values):
+        format_status, format_reason = LegalStatus.FAIL, "At least one reliable net quantity declaration contains a non-positive or non-finite numeric value."
+    elif len(typed_values) != len(values):
+        format_status, format_reason = LegalStatus.REVIEW_REQUIRED, "At least one net quantity declaration could not be parsed into a numeric value and unit."
     else:
-        if math.isfinite(value.value) and value.value > 0:
-            format_status, format_reason = LegalStatus.PASS, "Net quantity contains a finite positive numeric value."
-        else:
-            format_status, format_reason = LegalStatus.FAIL, "Reliable net quantity evidence contains a non-positive or non-finite numeric value."
-        if value.unit.strip().lower() in _QUANTITY_UNITS:
-            unit_status, unit_reason = LegalStatus.PASS, f"Net quantity unit '{value.unit}' is a recognized mass, volume, length, or count unit."
-        else:
-            unit_status, unit_reason = LegalStatus.FAIL, f"Reliable net quantity evidence uses unrecognized unit '{value.unit}'."
+        format_status, format_reason = LegalStatus.PASS, "All reliable parsed net quantity declarations contain finite positive numeric values."
+    invalid_units = sorted({value.unit for value in typed_values if value.unit.strip().lower() not in _QUANTITY_UNITS})
+    if invalid_units:
+        unit_status, unit_reason = LegalStatus.FAIL, f"At least one reliable net quantity declaration uses an unrecognized unit: {', '.join(repr(unit) for unit in invalid_units)}."
+    elif len(typed_values) != len(values):
+        unit_status, unit_reason = LegalStatus.REVIEW_REQUIRED, "At least one net quantity unit could not be parsed reliably."
+    else:
+        unit_status, unit_reason = LegalStatus.PASS, "All reliable parsed net quantity declarations use recognized mass, volume, length, or count units."
     return [
         _result(rule_id="NET_QUANTITY_FORMAT_VALIDITY", field="NET_QUANTITY", status=format_status,
                 reason=format_reason, source_rule=source_rule, decision=decision,
-                reference_date=reference_date, candidates=selected, evaluated_value=value),
+                reference_date=reference_date, candidates=selected, evaluated_value=values),
         _result(rule_id="NET_QUANTITY_UNIT_VALIDITY", field="NET_QUANTITY", status=unit_status,
                 reason=unit_reason, source_rule=source_rule, decision=decision,
-                reference_date=reference_date, candidates=selected, evaluated_value=value),
+                reference_date=reference_date, candidates=selected, evaluated_value=values),
     ]
 
 

@@ -86,7 +86,7 @@ def test_absent_optional_tax_phrase_is_not_treated_as_a_failure():
     assert result.status == LegalStatus.NOT_APPLICABLE
 
 
-def test_conflicting_explicit_tax_wording_requires_review_regardless_of_order():
+def test_explicit_tax_extra_wording_remains_fail_regardless_of_other_wording_or_order():
     candidates = [
         FieldCandidate(
             field="MRP",
@@ -105,7 +105,7 @@ def test_conflicting_explicit_tax_wording_requires_review_regardless_of_order():
     first = _result(_evaluate(candidates), "MRP_TAX_WORDING_CONSISTENCY")
     second = _result(_evaluate(list(reversed(candidates))), "MRP_TAX_WORDING_CONSISTENCY")
 
-    assert first.status == LegalStatus.REVIEW_REQUIRED
+    assert first.status == LegalStatus.FAIL
     assert first.model_dump() == second.model_dump()
 
 

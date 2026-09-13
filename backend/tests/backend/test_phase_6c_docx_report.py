@@ -428,8 +428,10 @@ def test_17_pdf_and_docx_consistency():
     assert snapshot.metadata.report_id in docx_text
     assert "sess_consistent_01" in pdf_text
     assert "sess_consistent_01" in docx_text
-    assert "NO VIOLATIONS DETECTED IN EVALUATED SCOPE" in pdf_text or "NO_VIOLATIONS_DETECTED_IN_EVALUATED_SCOPE" in pdf_text
-    assert "NO VIOLATIONS DETECTED IN EVALUATED SCOPE" in docx_text or "NO_VIOLATIONS_DETECTED_IN_EVALUATED_SCOPE" in docx_text
+    pdf_text_single_line = " ".join(pdf_text.split())
+    docx_text_single_line = " ".join(docx_text.split())
+    assert "NO VIOLATIONS DETECTED IN EVALUATED SCOPE" in pdf_text_single_line or "NO_VIOLATIONS_DETECTED_IN_EVALUATED_SCOPE" in pdf_text_single_line
+    assert "NO VIOLATIONS DETECTED IN EVALUATED SCOPE" in docx_text_single_line or "NO_VIOLATIONS_DETECTED_IN_EVALUATED_SCOPE" in docx_text_single_line
     assert "MRP declaration present and valid." in pdf_text
     assert "MRP declaration present and valid." in docx_text
     assert "DOMESTIC" in pdf_text

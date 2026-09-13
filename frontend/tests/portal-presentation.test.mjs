@@ -69,8 +69,8 @@ test('portal motion is restrained and respects reduced-motion preferences', asyn
   const [styles, app, panel] = await Promise.all([
     source('index.css'), source('App.jsx'), source('components/ocr/EvidenceInspectorPanel.jsx'),
   ]);
-  assert.match(styles, /portal-section-in 190ms ease-out/);
-  assert.match(styles, /portal-content-in 180ms ease-out/);
+  assert.match(styles, /portal-section-in 220ms ease-out/);
+  assert.match(styles, /portal-content-in 200ms ease-out/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(app, /className="portal-view"/);
   assert.match(panel, /portal-result-reveal/);

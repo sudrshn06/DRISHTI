@@ -24,6 +24,18 @@ const candidateValue = (candidate) => {
   return Object.values(normalized).filter((value) => value != null && value !== '').join(' · ');
 };
 
+const evaluatedValueText = (value) => {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return unique(value.map(evaluatedValueText)).join(' · ');
+  if (typeof value === 'object') {
+    if (value.raw_value) return evaluatedValueText(value.raw_value);
+    if (value.observed_values) return evaluatedValueText(value.observed_values);
+    return unique(Object.values(value).map(evaluatedValueText)).join(' · ');
+  }
+  return '';
+};
+
 export const getConfirmedFailFindings = (session) => {
   const source = session?.report_snapshot || session;
   const groups = session?.report_snapshot ? FINALIZED_FINDING_GROUPS : FINDING_GROUPS;
@@ -73,9 +85,8 @@ export const getFindingPresentation = (session, finding) => {
     || relatedCandidates[0];
   const evaluatedValue = finding.evaluated_value;
   const observedValue = candidateValue(observedCandidate)
-    || (typeof evaluatedValue === 'string' || typeof evaluatedValue === 'number'
-      ? String(evaluatedValue)
-      : 'No observed value recorded');
+    || evaluatedValueText(evaluatedValue)
+    || 'No observed value recorded';
 
   return {
     title: humanize(finding.title || finding.field || finding.rule_id || 'Confirmed requirement failure'),

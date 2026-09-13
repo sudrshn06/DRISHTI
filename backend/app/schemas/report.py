@@ -45,6 +45,7 @@ class DeclarationFindingItem(BaseModel):
     legal_reference: str = Field(..., description="Statutory source reference (e.g. Legal Metrology Rules, 2011 Rule 6)")
     applicability_status: str = Field(..., description="Applicability status (APPLICABLE, NOT_APPLICABLE, REVIEW_REQUIRED)")
     applicability_reason: Optional[str] = Field(None, description="Reason for applicability decision")
+    evaluated_value: Any = Field(None, description="Deterministic value or values evaluated for this finding")
     evidence_ids: List[str] = Field(default_factory=list, description="Contributing OCR evidence IDs")
     capture_ids: List[str] = Field(default_factory=list, description="Contributing capture IDs")
 

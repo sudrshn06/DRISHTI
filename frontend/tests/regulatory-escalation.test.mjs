@@ -101,3 +101,18 @@ test('complaint summary contains only stored deterministic FAIL findings', () =>
   assert.doesNotMatch(summary, /REVIEW_REQUIRED stored legal reference|REVIEW_REQUIRED deterministic reason/);
   assert.doesNotMatch(summary, /NOT_APPLICABLE stored legal reference|NOT_APPLICABLE deterministic reason/);
 });
+
+test('finalized finding uses its preserved deterministic value when aggregate lookup is unavailable', () => {
+  const data = session({ rules: [] });
+  data.aggregated_candidates = data.aggregated_candidates.filter((candidate) => candidate.field !== 'MRP');
+  data.report_snapshot = {
+    declaration_findings: [finding('FAIL', { evaluated_value: ['MRP Rs 137 plus GST'] })],
+    food_label_findings: [],
+    visual_compliance_findings: [],
+  };
+
+  const summary = buildRegulatoryEscalationSummary(data);
+
+  assert.match(summary, /MRP Rs 137 plus GST/);
+  assert.doesNotMatch(summary, /No observed value recorded/);
+});

@@ -251,6 +251,7 @@ def generate_inspection_report(
             legal_reference=legal_ref,
             applicability_status=app_status,
             applicability_reason=app_reason,
+            evaluated_value=getattr(r, "evaluated_value", None),
             evidence_ids=ev_ids,
             capture_ids=cap_ids
         ))
@@ -279,6 +280,7 @@ def generate_inspection_report(
             legal_reference=legal_ref,
             applicability_status=app_status,
             applicability_reason=app_reason,
+            evaluated_value=getattr(r, "evaluated_value", None),
             evidence_ids=ev_ids,
             capture_ids=cap_ids
         ))

@@ -19,7 +19,7 @@ from app.services.rule_engine import get_applicable_rules
 from app.services.rule_loader import load_production_rules
 
 
-DETERMINISTIC_EVALUATION_ALGORITHM = "drishti-deterministic-evaluation-v2"
+DETERMINISTIC_EVALUATION_ALGORITHM = "drishti-deterministic-evaluation-v3"
 
 
 def default_capture_processing_provenance() -> CaptureProcessingProvenance:

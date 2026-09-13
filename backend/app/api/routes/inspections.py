@@ -855,8 +855,21 @@ def _update_session_compliance(session: InspectionSession):
         legal_candidates = session.deterministic_aggregated_candidates
         if legal_candidates is None:
             legal_candidates = session.aggregated_candidates
+        from app.services.officer_review_service import apply_officer_overrides
+        from app.services.reproducibility_service import deterministic_candidates_for_capture
+        validation_candidates = []
+        for capture in session.captures:
+            for candidate in deterministic_candidates_for_capture(capture):
+                validation_candidates.append(candidate.model_copy(update={
+                    "capture_ids": sorted({*candidate.capture_ids, capture.capture_id}),
+                }))
+        validation_candidates = apply_officer_overrides(
+            validation_candidates,
+            session.officer_declaration_overrides,
+        )
         session.rule_evaluations = orchestrate_compliance(
             candidates=legal_candidates,
+            validity_candidates=validation_candidates,
             reference_date=reference_date_obj,
             product_category=session.product_category,
             product_origin=session.product_origin,
@@ -874,11 +887,23 @@ def _update_session_compliance(session: InspectionSession):
             from app.services.fssai_compliance_service import evaluate_fssai_compliance
             session.food_label_evaluations = evaluate_fssai_compliance(
                 candidates=legal_candidates,
+                validity_candidates=validation_candidates,
                 reference_date=reference_date_obj,
                 evidence_sufficiency=session.evidence_sufficiency
             )
         else:
             session.food_label_evaluations = []
+
+        from app.services.cross_surface_consistency_service import evaluate_cross_surface_consistency
+        consistency_results, food_consistency_results = evaluate_cross_surface_consistency(
+            captures=session.captures,
+            officer_overrides=session.officer_declaration_overrides,
+            legal_metrology_results=session.rule_evaluations,
+            food_results=session.food_label_evaluations,
+            reference_date=reference_date_obj,
+        )
+        session.rule_evaluations.extend(consistency_results)
+        session.food_label_evaluations.extend(food_consistency_results)
         
         # Aggregate missing context
         context_map = defaultdict(list)
