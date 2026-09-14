@@ -35,6 +35,7 @@ from app.services.officer_review_service import (
 from app.services.compliance_service import orchestrate_compliance
 from app.schemas.report import InspectionReportSnapshot
 from app.services.report_service import generate_inspection_report
+from app.services.evidence_package_service import build_evidence_manifest, has_confirmed_deterministic_fail
 from app.services.pdf_report_service import generate_pdf_report
 from app.services.docx_report_service import generate_docx_report
 from app.services.image_store import store_capture_image
@@ -1164,8 +1165,16 @@ async def export_evidence_package(
     plan = _capture_plans.get(session.capture_plan_id, _default_plan)
     _resolve_report_snapshot(session, plan, db)
 
-    # Transiently hydrate evidence image assets
-    _hydrate_report_evidence_assets(session.report_snapshot, inspection_id)
+    if not has_confirmed_deterministic_fail(session.report_snapshot):
+        raise HTTPException(
+            status_code=400,
+            detail="Regulatory escalation requires at least one confirmed deterministic FAIL finding.",
+        )
+
+    # Hydration is export-only. Never mutate the frozen snapshot attached to the
+    # finalized inspection while assembling downloadable artifacts.
+    export_report = session.report_snapshot.model_copy(deep=True)
+    _hydrate_report_evidence_assets(export_report, inspection_id)
 
     # 1. Generate Case Details Text
     details_lines = [
@@ -1180,37 +1189,43 @@ async def export_evidence_package(
         f"Generated At: {datetime.now(timezone.utc).isoformat()}",
         "",
         "SUMMARY COUNTS:",
-        f"  Passed Checks: {session.report_snapshot.summary_counts.statutory_pass_count}",
-        f"  Failed Checks: {session.report_snapshot.summary_counts.statutory_fail_count}",
-        f"  Needs Review: {session.report_snapshot.summary_counts.statutory_review_required_count}",
-        f"  Not Applicable: {session.report_snapshot.summary_counts.statutory_not_applicable_count}",
+        f"  Passed Checks: {export_report.summary_counts.statutory_pass_count}",
+        f"  Failed Checks: {export_report.summary_counts.statutory_fail_count}",
+        f"  Needs Review: {export_report.summary_counts.statutory_review_required_count}",
+        f"  Not Applicable: {export_report.summary_counts.statutory_not_applicable_count}",
         "",
         "OBSERVED ISSUES:",
     ]
 
     details_lines.append("LEGAL METROLOGY VIOLATIONS:")
-    lm_fails = [f for f in session.report_snapshot.declaration_findings if f.status == "FAIL"]
+    lm_fails = [f for f in export_report.declaration_findings if f.status == "FAIL"]
     if lm_fails:
         for finding in lm_fails:
             details_lines.append(f"  - Domain: LEGAL_METROLOGY | {finding.field}: {finding.reason} (Rule: {finding.rule_id}, Ref: {finding.legal_reference})")
     else:
         details_lines.append("  - None")
 
-    if getattr(session.report_snapshot, "food_label_findings", None):
+    if getattr(export_report, "food_label_findings", None):
         details_lines.append("")
         details_lines.append("FOOD LABEL / FSSAI VIOLATIONS:")
-        food_fails = [f for f in session.report_snapshot.food_label_findings if f.status == "FAIL"]
+        food_fails = [f for f in export_report.food_label_findings if f.status == "FAIL"]
         if food_fails:
             for finding in food_fails:
                 details_lines.append(f"  - Domain: FOOD_LABEL_FSSAI | {finding.field}: {finding.reason} (Rule: {finding.rule_id}, Ref: {finding.legal_reference})")
         else:
             details_lines.append("  - None")
 
-    for v_finding in session.report_snapshot.visual_compliance_findings:
+    for v_finding in export_report.visual_compliance_findings:
         if v_finding.status == "FAIL":
             details_lines.append(f"- Visual: {v_finding.rule_id}: {v_finding.reason} (Ref: {v_finding.legal_reference})")
 
     details_text = "\n".join(details_lines)
+    manifest = build_evidence_manifest(
+        session,
+        session.report_snapshot,
+        officer_notes=req.officer_notes,
+        complaint_draft=req.complaint_draft,
+    )
 
     # 2. Compile Zip in Memory
     zip_buffer = io.BytesIO()
@@ -1220,10 +1235,17 @@ async def export_evidence_package(
         
         # Write complaint draft
         zip_file.writestr("complaint_draft.txt", req.complaint_draft)
-        
-        # Write officer notes
-        if req.officer_notes:
-            zip_file.writestr("officer_notes.txt", req.officer_notes)
+        zip_file.writestr("officer_notes.txt", req.officer_notes)
+        zip_file.writestr(
+            "manifest.json",
+            json.dumps(
+                manifest,
+                indent=2,
+                ensure_ascii=False,
+                sort_keys=True,
+                allow_nan=False,
+            ).encode("utf-8"),
+        )
 
         if session.officer_declaration_overrides:
             zip_file.writestr(
@@ -1239,20 +1261,20 @@ async def export_evidence_package(
 
         # Write PDF report
         try:
-            pdf_bytes = generate_pdf_report(session.report_snapshot)
+            pdf_bytes = generate_pdf_report(export_report)
             zip_file.writestr(f"DRISHTI_Inspection_Report_{inspection_id}.pdf", pdf_bytes)
         except Exception as e:
             zip_file.writestr("report_generation_error.txt", f"Failed to include PDF report: {str(e)}")
 
         # Write DOCX report
         try:
-            docx_bytes = generate_docx_report(session.report_snapshot)
+            docx_bytes = generate_docx_report(export_report)
             zip_file.writestr(f"DRISHTI_Inspection_Report_{inspection_id}.docx", docx_bytes)
         except Exception:
             pass
 
         # Write original captured images
-        for asset in session.report_snapshot.evidence_assets:
+        for asset in export_report.evidence_assets:
             capture = next(
                 (
                     item
