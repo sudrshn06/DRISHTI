@@ -54,6 +54,35 @@ def parse_net_quantity(text: str) -> Optional[NetQuantityNormalized]:
             pass
     return None
 
+
+def parse_net_quantity_observation(text: str) -> Optional[NetQuantityNormalized]:
+    """Preserve reliable labelled numeric evidence even when its unit is invalid.
+
+    This is intentionally broader than ``parse_net_quantity`` and is only used
+    after the extractor has identified an explicit net-quantity declaration.
+    The validity service, rather than this parser, decides the legal result.
+    """
+    parsed = parse_net_quantity(text)
+    if parsed is not None:
+        return parsed
+    if not re.search(r"\bNET\s*(?:QTY|QUANTITY|WEIGHT|WT|VOL(?:UME)?)\b", text, re.IGNORECASE):
+        return None
+    match = re.search(
+        r"\bNET\s*(?:QTY|QUANTITY|WEIGHT|WT|VOL(?:UME)?)\b\s*:?-?\s*"
+        r"(\d+(?:\.\d+)?)\s*([A-Z]+)?\b",
+        text,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+    try:
+        return NetQuantityNormalized(
+            value=float(match.group(1)),
+            unit=(match.group(2) or "").lower(),
+        )
+    except ValueError:
+        return None
+
 def parse_business_declaration(text: str) -> Optional[BusinessNormalized]:
     """
     Extracts the role, name, address, and pin_code from a business declaration line.
@@ -187,6 +216,49 @@ def parse_date_declaration(text: str) -> Optional[DateNormalized]:
         d_type = date_type if date_type != "UNKNOWN" else "BEST_BEFORE"
         return DateNormalized(type=d_type, duration=duration, duration_unit=unit)
 
+    return None
+
+
+def parse_date_observation(text: str) -> Optional[DateNormalized]:
+    """Preserve labelled calendar components that may be structurally invalid."""
+    parsed = parse_date_declaration(text)
+    if parsed is not None:
+        return parsed
+    text_upper = text.upper()
+    if "BEST BEFORE" in text_upper:
+        date_type = "BEST_BEFORE"
+    elif "USE BY" in text_upper:
+        date_type = "USE_BY"
+    elif "EXP" in text_upper:
+        date_type = "EXPIRY"
+    elif any(token in text_upper for token in ("PKD", "PACKED", "PACKING")):
+        date_type = "PACKED"
+    elif any(token in text_upper for token in ("MFG", "MFD", "MANUFACTURE")):
+        date_type = "MANUFACTURED"
+    elif "IMPORTED" in text_upper or "IMPORT DATE" in text_upper:
+        date_type = "IMPORTED"
+    else:
+        return None
+
+    full_date = re.search(
+        r"(?<!\d)(\d{1,2})[-/.\s](\d{1,2})[-/.\s](20\d{2}|\d{2})(?!\d)",
+        text_upper,
+    )
+    if full_date:
+        year_text = full_date.group(3)
+        year = int(year_text) + (2000 if len(year_text) == 2 else 0)
+        return DateNormalized(
+            type=date_type,
+            day=int(full_date.group(1)),
+            month=int(full_date.group(2)),
+            year=year,
+        )
+
+    month_year = re.search(r"(?<!\d)(\d{1,2})[-/.\s](20\d{2}|\d{2})(?!\d)", text_upper)
+    if month_year:
+        year_text = month_year.group(2)
+        year = int(year_text) + (2000 if len(year_text) == 2 else 0)
+        return DateNormalized(type=date_type, month=int(month_year.group(1)), year=year)
     return None
 
 def parse_consumer_care(text: str) -> Optional[ConsumerCareNormalized]:
@@ -331,4 +403,3 @@ def parse_unit_sale_price(text: str) -> Optional[UnitSalePriceNormalized]:
             pass
             
     return None
-

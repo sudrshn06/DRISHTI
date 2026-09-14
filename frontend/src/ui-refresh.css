@@ -1,0 +1,556 @@
+/* DRISHTI application-wide visual refresh.
+   Presentation-only layer: no workflow, API, state, or business-logic changes. */
+
+:root {
+  --drishti-navy: #102a43;
+  --drishti-navy-2: #163a5f;
+  --drishti-teal: #087f83;
+  --drishti-teal-soft: #e8f6f5;
+  --drishti-green: #278342;
+  --drishti-green-soft: #edf8f0;
+  --drishti-amber: #b7791f;
+  --drishti-amber-soft: #fff8e8;
+  --drishti-red: #b42318;
+  --drishti-red-soft: #fff1ef;
+  --drishti-ink: #1f2937;
+  --drishti-muted: #64748b;
+  --drishti-border: #d9e2e8;
+  --drishti-border-strong: #c8d5dd;
+  --drishti-surface: #ffffff;
+  --drishti-surface-soft: #f7fafb;
+  --drishti-page: #f4f7f8;
+  --drishti-shadow: 0 12px 30px rgba(16, 42, 67, 0.07);
+  --drishti-shadow-strong: 0 20px 48px rgba(16, 42, 67, 0.12);
+}
+
+/* ---------- Base presentation discipline ---------- */
+
+#root {
+  min-height: 100vh;
+}
+
+main.portal-page {
+  position: relative;
+}
+
+main.portal-page > * {
+  scroll-margin-top: 108px;
+}
+
+main.portal-page h1,
+main.portal-page h2,
+main.portal-page h3,
+main.portal-page h4 {
+  letter-spacing: -0.01em;
+}
+
+main.portal-page h1,
+main.portal-page h2 {
+  color: var(--drishti-navy);
+}
+
+main.portal-page p {
+  text-wrap: pretty;
+}
+
+main.portal-page button,
+main.portal-page input,
+main.portal-page select,
+main.portal-page textarea,
+#root > .portal-view button,
+#root > .portal-view input,
+#root > .portal-view select,
+#root > .portal-view textarea {
+  min-height: 40px;
+}
+
+main.portal-page input,
+main.portal-page select,
+main.portal-page textarea,
+#root > .portal-view input,
+#root > .portal-view select,
+#root > .portal-view textarea {
+  border-color: var(--drishti-border-strong) !important;
+  background: #fff !important;
+  color: var(--drishti-ink) !important;
+}
+
+main.portal-page input:focus,
+main.portal-page select:focus,
+main.portal-page textarea:focus,
+#root > .portal-view input:focus,
+#root > .portal-view select:focus,
+#root > .portal-view textarea:focus {
+  border-color: var(--drishti-teal) !important;
+  box-shadow: 0 0 0 3px rgba(8, 127, 131, 0.10) !important;
+  outline: none !important;
+}
+
+main.portal-page textarea {
+  line-height: 1.6;
+}
+
+/* Normalize old prototype indigo into DRISHTI teal/navy without touching status colors. */
+main.portal-page .bg-indigo-600,
+#root > .portal-view .bg-indigo-600 {
+  background-color: var(--drishti-teal) !important;
+}
+
+main.portal-page .hover\:bg-indigo-700:hover,
+#root > .portal-view .hover\:bg-indigo-700:hover {
+  background-color: #066f73 !important;
+}
+
+main.portal-page .text-indigo-600,
+main.portal-page .text-indigo-700,
+#root > .portal-view .text-indigo-600,
+#root > .portal-view .text-indigo-700 {
+  color: var(--drishti-teal) !important;
+}
+
+main.portal-page .bg-indigo-50,
+#root > .portal-view .bg-indigo-50 {
+  background-color: var(--drishti-teal-soft) !important;
+}
+
+main.portal-page .border-indigo-200,
+main.portal-page .border-indigo-400,
+main.portal-page .border-indigo-500,
+main.portal-page .border-indigo-600,
+#root > .portal-view .border-indigo-200,
+#root > .portal-view .border-indigo-500 {
+  border-color: rgba(8, 127, 131, 0.30) !important;
+}
+
+/* ---------- Cards and institutional hierarchy ---------- */
+
+main.portal-page > .bg-white.rounded-xl,
+main.portal-page > .portal-card,
+main.portal-page .bg-white.rounded-xl.shadow-sm,
+main.portal-page .bg-white.rounded-xl.border,
+main.portal-page .portal-card {
+  border-color: var(--drishti-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--drishti-shadow) !important;
+}
+
+main.portal-page > .portal-card.border-t-4,
+main.portal-page > .portal-card:first-child {
+  overflow: hidden;
+}
+
+main.portal-page > .portal-card.border-t-4 {
+  border-top-color: var(--drishti-teal) !important;
+}
+
+main.portal-page > .portal-card.border-t-4 h1 svg,
+main.portal-page > .portal-card.border-t-4 .text-indigo-600 {
+  color: var(--drishti-teal) !important;
+}
+
+/* ---------- History / Reports ---------- */
+
+main.portal-page > .portal-card + .bg-white.rounded-xl.p-5 {
+  border: 1px solid var(--drishti-border) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  box-shadow: var(--drishti-shadow) !important;
+}
+
+main.portal-page > .portal-card + .bg-white.rounded-xl.p-5 label {
+  color: #526172 !important;
+  font-weight: 700 !important;
+}
+
+main.portal-page > .portal-card + .bg-white.rounded-xl.p-5 select,
+main.portal-page > .portal-card + .bg-white.rounded-xl.p-5 input {
+  min-height: 42px;
+  border-radius: 10px !important;
+  background: #fbfcfd !important;
+}
+
+main.portal-page > .space-y-3 > .bg-white,
+main.portal-page > .space-y-3 > div[class*="bg-white"] {
+  border-color: var(--drishti-border) !important;
+  border-radius: 15px !important;
+  box-shadow: 0 6px 20px rgba(16, 42, 67, 0.05);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+main.portal-page > .space-y-3 > .bg-white:hover,
+main.portal-page > .space-y-3 > div[class*="bg-white"]:hover {
+  border-color: #aebfc9 !important;
+  box-shadow: var(--drishti-shadow);
+  transform: translateY(-1px);
+}
+
+main.portal-page > .space-y-3 [class*="rounded-full"] {
+  font-weight: 700;
+}
+
+main.portal-page > .space-y-3 button[class*="bg-indigo-600"] {
+  background: var(--drishti-navy) !important;
+}
+
+main.portal-page > .space-y-3 button[class*="bg-indigo-600"]:hover {
+  background: var(--drishti-navy-2) !important;
+}
+
+/* ---------- Rule library ---------- */
+
+main.portal-page .portal-result-reveal > .portal-card.border-l-4 {
+  border-left-color: var(--drishti-teal) !important;
+  padding: 24px !important;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+main.portal-page .portal-result-reveal > .portal-card.border-l-4:hover {
+  border-color: #aebfc9 !important;
+  border-left-color: var(--drishti-teal) !important;
+  box-shadow: 0 14px 34px rgba(16, 42, 67, 0.08) !important;
+  transform: translateY(-1px);
+}
+
+main.portal-page .portal-result-reveal > .portal-card.border-l-4 > .bg-slate-50 {
+  border-color: #e1e8ed !important;
+  border-radius: 12px !important;
+  background: #f8fafb !important;
+}
+
+main.portal-page .portal-result-reveal > .portal-card.border-l-4 h3 {
+  color: var(--drishti-navy) !important;
+}
+
+/* ---------- Evidence viewer ---------- */
+
+.inspection-workspace-grid > * .bg-white.rounded-xl.overflow-hidden {
+  overflow: hidden;
+  border-color: var(--drishti-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--drishti-shadow) !important;
+}
+
+.inspection-workspace-grid > * .bg-white.rounded-xl.overflow-hidden > .bg-slate-50 {
+  background: #f8fafb !important;
+}
+
+.inspection-workspace-grid > * .bg-white.rounded-xl.overflow-hidden > .relative.bg-slate-950 {
+  background: #0b1724 !important;
+  min-height: 420px;
+}
+
+.inspection-workspace-grid > * .bg-white.rounded-xl.overflow-hidden > .relative.bg-slate-950 img {
+  border-radius: 8px;
+}
+
+.inspection-workspace-grid > * .bg-white.rounded-xl.overflow-hidden > .p-3.bg-white {
+  padding: 14px 16px !important;
+  background: #fbfcfd !important;
+}
+
+.inspection-workspace-grid > * .bg-white.rounded-xl.overflow-hidden button[class*="bg-indigo-600"] {
+  background: var(--drishti-teal) !important;
+}
+
+/* ---------- Package information ---------- */
+
+.workspace-package-information section.rounded-xl.border.bg-white,
+.workspace-details section.rounded-xl.border.bg-white,
+.workspace-assessment section.rounded-xl.border.bg-white {
+  border-color: var(--drishti-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--drishti-shadow) !important;
+}
+
+.workspace-package-information section.rounded-xl.border.bg-white > .flex.items-start.gap-3 > .rounded-lg,
+.workspace-assessment section.rounded-xl.border.bg-white > .flex.items-start.gap-3 > .rounded-lg {
+  border-radius: 10px !important;
+  background: var(--drishti-teal-soft) !important;
+  color: var(--drishti-teal) !important;
+}
+
+.workspace-package-information section.rounded-xl.border.bg-white > .mt-4.overflow-hidden.border {
+  border-color: var(--drishti-border) !important;
+  border-radius: 12px;
+}
+
+.workspace-package-information section.rounded-xl.border.bg-white > .mt-4.overflow-hidden.border > div {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.workspace-package-information section.rounded-xl.border.bg-white button[class*="bg-indigo-600"] {
+  background: var(--drishti-navy) !important;
+}
+
+.workspace-package-information section.rounded-xl.border.bg-white button[class*="bg-indigo-600"]:hover {
+  background: var(--drishti-navy-2) !important;
+}
+
+.workspace-package-information section[class*="border-indigo-200"] {
+  border-color: rgba(8, 127, 131, 0.25) !important;
+  background: linear-gradient(180deg, #f6fbfb 0%, #eef8f7 100%) !important;
+}
+
+.workspace-package-information section[class*="border-indigo-200"] select {
+  border-color: #bcd4d5 !important;
+}
+
+/* ---------- Result summary ---------- */
+
+.portal-result-reveal.rounded-xl.border.p-5 {
+  border-radius: 16px !important;
+  box-shadow: 0 7px 22px rgba(16, 42, 67, 0.05);
+}
+
+.portal-result-reveal.rounded-xl.border.p-5 h2 {
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Legal assessment / evidence inspector ---------- */
+
+.workspace-assessment > .space-y-6 > .bg-white.rounded-xl,
+.workspace-assessment .bg-white.rounded-xl.p-5.space-y-4 {
+  border-color: var(--drishti-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--drishti-shadow) !important;
+}
+
+.workspace-assessment .bg-white.rounded-xl.p-5.space-y-4 > .border-b:first-child {
+  padding-bottom: 14px !important;
+}
+
+.workspace-assessment .bg-white.rounded-xl.p-5.space-y-4 > .space-y-2 > .border.rounded-lg {
+  border-color: var(--drishti-border) !important;
+  border-radius: 12px !important;
+  background: #fff;
+}
+
+.workspace-assessment .bg-white.rounded-xl.p-5.space-y-4 > .space-y-2 > .border.rounded-lg:hover {
+  border-color: #a9bac5 !important;
+  background: #fbfcfd !important;
+}
+
+.workspace-assessment .bg-white.rounded-xl.p-5.space-y-4 > .space-y-2 > .border.rounded-lg[class*="border-indigo-400"] {
+  border-color: rgba(8, 127, 131, 0.45) !important;
+  background: #f5fbfb !important;
+  box-shadow: 0 0 0 2px rgba(8, 127, 131, 0.07) !important;
+}
+
+#package-presentation-checks {
+  border-radius: 16px !important;
+}
+
+#package-presentation-checks > button:hover {
+  background: #f8fafb;
+}
+
+#package-presentation-checks article {
+  border-color: var(--drishti-border) !important;
+  border-radius: 12px !important;
+  background: #fbfcfd !important;
+}
+
+/* ---------- Modal polish ---------- */
+
+.fixed.inset-0.z-50.flex.items-end.bg-slate-900\/60 {
+  background: rgba(6, 18, 30, 0.66) !important;
+  backdrop-filter: blur(6px);
+}
+
+.fixed.inset-0.z-50.flex.items-end.bg-slate-900\/60 form[role="dialog"] {
+  border-color: var(--drishti-border) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 28px 80px rgba(6, 18, 30, 0.28) !important;
+}
+
+.fixed.inset-0.z-50.flex.items-end.bg-slate-900\/60 form[role="dialog"] > .mt-4.rounded-xl.border.bg-slate-50 {
+  border-color: #dbe3e8 !important;
+  background: #f8fafb !important;
+}
+
+.fixed.inset-0.z-50.flex.items-end.bg-slate-900\/60 form[role="dialog"] button[type="submit"] {
+  background: var(--drishti-navy) !important;
+}
+
+.fixed.inset-0.z-50.flex.items-end.bg-slate-900\/60 form[role="dialog"] button[type="submit"]:hover {
+  background: var(--drishti-navy-2) !important;
+}
+
+/* ---------- Prepare Case / Regulatory Escalation ---------- */
+
+main.portal-page > button:first-child[class*="bg-slate-100"] {
+  border-color: var(--drishti-border) !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  box-shadow: 0 3px 10px rgba(16, 42, 67, 0.04);
+}
+
+main.portal-page > button:first-child[class*="bg-slate-100"]:hover {
+  border-color: #aebfc9 !important;
+  background: #f8fafb !important;
+}
+
+main.portal-page > button:first-child + .bg-white.rounded-xl.p-5 {
+  border-color: var(--drishti-border) !important;
+  border-top: 3px solid var(--drishti-red) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--drishti-shadow) !important;
+  padding: 22px !important;
+}
+
+main.portal-page > .grid.grid-cols-1.md\:grid-cols-3 > div > .bg-white.rounded-xl,
+main.portal-page > .grid.grid-cols-1.md\:grid-cols-3 > .space-y-6 > .bg-white.rounded-xl {
+  border-color: var(--drishti-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--drishti-shadow) !important;
+}
+
+main.portal-page > .grid.grid-cols-1.md\:grid-cols-3 textarea[readonly] {
+  background: #f8fafb !important;
+  color: #354152 !important;
+}
+
+main.portal-page > .grid.grid-cols-1.md\:grid-cols-3 .border-rose-200\/40 {
+  border-color: #edc4bf !important;
+  background: #fffafa !important;
+  border-radius: 12px !important;
+}
+
+/* ---------- Auth portal ---------- */
+
+#root > .portal-view > .min-h-screen {
+  background:
+    linear-gradient(135deg, rgba(8, 127, 131, 0.05), transparent 34%),
+    #f4f7f8 !important;
+}
+
+#root > .portal-view > .min-h-screen > .bg-\[\#102a43\] {
+  background: var(--drishti-navy) !important;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+}
+
+#root > .portal-view aside {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(155deg, #102a43 0%, #163a5f 66%, #0d5f63 100%) !important;
+  border-radius: 18px 0 0 18px;
+  box-shadow: var(--drishti-shadow-strong);
+}
+
+#root > .portal-view aside::after {
+  content: "";
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  right: -90px;
+  top: -70px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.025);
+}
+
+#root > .portal-view aside + div {
+  border-color: var(--drishti-border) !important;
+  border-radius: 0 18px 18px 0;
+  box-shadow: var(--drishti-shadow-strong) !important;
+}
+
+#root > .portal-view aside + div h2 {
+  color: var(--drishti-navy) !important;
+  letter-spacing: -0.015em;
+}
+
+#root > .portal-view aside + div label {
+  color: #526172 !important;
+  font-weight: 700 !important;
+}
+
+#root > .portal-view aside + div button[type="submit"] {
+  min-height: 46px;
+  border-radius: 11px !important;
+  background: var(--drishti-navy) !important;
+  box-shadow: 0 8px 20px rgba(16, 42, 67, 0.14) !important;
+}
+
+#root > .portal-view aside + div button[type="submit"]:hover {
+  background: var(--drishti-navy-2) !important;
+}
+
+#root > .portal-view aside + div button[class*="text-indigo-600"] {
+  color: var(--drishti-teal) !important;
+}
+
+/* ---------- Status semantics ---------- */
+
+main.portal-page .bg-amber-50,
+#root > .portal-view .bg-amber-50 {
+  background-color: var(--drishti-amber-soft) !important;
+}
+
+main.portal-page .bg-emerald-50,
+#root > .portal-view .bg-emerald-50 {
+  background-color: var(--drishti-green-soft) !important;
+}
+
+main.portal-page .bg-rose-50,
+main.portal-page .bg-red-50,
+#root > .portal-view .bg-rose-50,
+#root > .portal-view .bg-red-50 {
+  background-color: var(--drishti-red-soft) !important;
+}
+
+/* Keep status backgrounds subtle, never full-surface alarming. */
+main.portal-page [class*="bg-amber-50"],
+main.portal-page [class*="bg-emerald-50"],
+main.portal-page [class*="bg-rose-50"],
+main.portal-page [class*="bg-red-50"] {
+  box-shadow: none;
+}
+
+/* ---------- Responsive behavior ---------- */
+
+@media (max-width: 1023px) {
+  #root > .portal-view aside + div {
+    border-radius: 18px !important;
+  }
+
+  main.portal-page > .grid.grid-cols-1.md\:grid-cols-3 {
+    gap: 18px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  main.portal-page {
+    padding-top: 20px !important;
+  }
+
+  main.portal-page > .portal-card,
+  main.portal-page > .bg-white.rounded-xl,
+  main.portal-page .bg-white.rounded-xl.shadow-sm,
+  main.portal-page .portal-card {
+    border-radius: 14px !important;
+  }
+
+  main.portal-page > .portal-card.border-t-4 {
+    padding: 20px !important;
+  }
+
+  .inspection-workspace-grid > * .bg-white.rounded-xl.overflow-hidden > .relative.bg-slate-950 {
+    min-height: 300px;
+  }
+
+  #root > .portal-view aside + div {
+    box-shadow: 0 12px 34px rgba(16, 42, 67, 0.10) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main.portal-page > .space-y-3 > .bg-white:hover,
+  main.portal-page .portal-result-reveal > .portal-card.border-l-4:hover,
+  main.portal-page button:not(:disabled):hover {
+    transform: none !important;
+  }
+}

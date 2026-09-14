@@ -45,6 +45,7 @@ class DeclarationFindingItem(BaseModel):
     legal_reference: str = Field(..., description="Statutory source reference (e.g. Legal Metrology Rules, 2011 Rule 6)")
     applicability_status: str = Field(..., description="Applicability status (APPLICABLE, NOT_APPLICABLE, REVIEW_REQUIRED)")
     applicability_reason: Optional[str] = Field(None, description="Reason for applicability decision")
+    evaluated_value: Any = Field(None, description="Deterministic value or values evaluated for this finding")
     evidence_ids: List[str] = Field(default_factory=list, description="Contributing OCR evidence IDs")
     capture_ids: List[str] = Field(default_factory=list, description="Contributing capture IDs")
 
@@ -58,6 +59,10 @@ class VisualComplianceFindingItem(BaseModel):
     limitations: str = Field(..., description="Technical and statutory limitation disclosures")
     evidence_ids: List[str] = Field(default_factory=list, description="Supporting evidence IDs")
     capture_ids: List[str] = Field(default_factory=list, description="Supporting capture IDs")
+    metrics: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Measured image-relative evidence; never a physical-unit inference",
+    )
 
 class ReportEvidenceAsset(BaseModel):
     capture_id: str = Field(..., description="Unique capture identifier")

@@ -1,5 +1,5 @@
 from datetime import date
-from typing import List
+from typing import List, Optional
 
 from app.schemas.compliance import RuleEvaluationResult, LegalStatus
 from app.schemas.ocr import FieldCandidate
@@ -8,6 +8,7 @@ from app.services.rule_engine import get_applicable_rules, evaluate_candidate
 
 from app.services.applicability_model import evaluate_applicability
 from app.schemas.applicability import ApplicabilityStatus
+from app.services.declaration_validity_service import evaluate_declaration_validity
 from decimal import Decimal
 
 def get_expected_usp_denominator(qty_val: float, qty_unit: str):
@@ -84,7 +85,8 @@ def orchestrate_compliance(
     date_regulatory_regime: str = "UNKNOWN",
     date_package_exemption: str = "UNKNOWN",
     evidence_sufficiency: str = "INSUFFICIENT_FOR_ABSENCE_EVALUATION",
-    inspection_complete: bool = False
+    inspection_complete: bool = False,
+    validity_candidates: Optional[List[FieldCandidate]] = None,
 ) -> List[RuleEvaluationResult]:
     """
     Orchestrates the compliance evaluation process.
@@ -454,4 +456,11 @@ def orchestrate_compliance(
         result.applicability = decision
         results.append(result)
         
+    results.extend(evaluate_declaration_validity(
+        candidates=validity_candidates if validity_candidates is not None else candidates,
+        applicable_rules=applicable_rules,
+        applicability_decisions=applicability_decisions,
+        reference_date=reference_date,
+        evidence_sufficiency=evidence_sufficiency,
+    ))
     return results

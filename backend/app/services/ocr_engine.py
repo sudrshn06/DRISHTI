@@ -1,6 +1,7 @@
 import logging
 import os
 import threading
+from importlib.metadata import PackageNotFoundError, version
 from typing import List
 
 import cv2
@@ -14,6 +15,31 @@ logger = logging.getLogger(__name__)
 _ocr_model = None
 _ocr_model_lock = threading.Lock()
 _OCR_MAX_SIDE = 1800
+OCR_PREPROCESSING_CONFIG_ID = "drishti-ocr-preprocess-v1:max-side=1800:inter-area"
+
+
+def get_ocr_engine_version() -> str:
+    """Return the installed provider version without constructing its models."""
+    try:
+        return version("paddleocr")
+    except PackageNotFoundError:
+        return "UNKNOWN"
+
+
+def canonicalize_ocr_lines(lines: List[OcrLine]) -> List[OcrLine]:
+    """Return a stable visual reading order independent of provider list order."""
+    def line_key(line: OcrLine):
+        xs = [point[0] for point in line.polygon] or [0.0]
+        ys = [point[1] for point in line.polygon] or [0.0]
+        return (
+            round(min(ys), 4),
+            round(min(xs), 4),
+            round(max(ys), 4),
+            round(max(xs), 4),
+            line.text,
+        )
+
+    return [line.model_copy(deep=True) for line in sorted(lines, key=line_key)]
 
 def get_ocr_model():
     global _ocr_model
@@ -112,4 +138,4 @@ def analyze_image(image: np.ndarray) -> List[OcrLine]:
             ]
         ))
 
-    return lines
+    return canonicalize_ocr_lines(lines)

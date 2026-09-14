@@ -11,6 +11,7 @@ from app.schemas.visual_assessment import (
     TextProminenceMetrics,
     VisualReadabilitySignal,
     DeclarationVisualAssessment,
+    DeclarationProximityEvidence,
     CaptureVisualAssessmentSummary,
     VisualCheckType,
     VisualObservationStatus,
@@ -204,12 +205,72 @@ def evaluate_readability(
         if not reasons:
             reasons.append("Declaration visual evidence is clearly framed and evaluable.")
             
+    quality_metrics = {}
+    if quality_assessment:
+        quality_metrics = {
+            "blur_score": quality_assessment.blur_score,
+            "brightness": quality_assessment.brightness,
+            "glare_percentage": quality_assessment.glare_percentage,
+        }
+
     return VisualReadabilitySignal(
         ocr_confidence=round(max(0.0, min(1.0, ocr_confidence)), 2),
         is_clipped=is_clipped,
         capture_quality_status=capture_quality_status,
         technical_readability=technical_readability,
-        readability_reasons=reasons
+        readability_reasons=reasons,
+        quality_metrics=quality_metrics,
+    )
+
+
+def _relative_image_position(geometry: Optional[RegionGeometry]) -> Optional[str]:
+    """Describe a region's image-relative location without asserting legal placement."""
+    if not geometry:
+        return None
+    box = geometry.normalized_box
+    horizontal = "LEFT" if (box.x_min + box.x_max) / 2 < 1 / 3 else (
+        "RIGHT" if (box.x_min + box.x_max) / 2 > 2 / 3 else "CENTER"
+    )
+    vertical = "TOP" if (box.y_min + box.y_max) / 2 < 1 / 3 else (
+        "BOTTOM" if (box.y_min + box.y_max) / 2 > 2 / 3 else "MIDDLE"
+    )
+    return f"{vertical}_{horizontal}"
+
+
+def _proximity_evidence(
+    assessment: DeclarationVisualAssessment,
+    other: DeclarationVisualAssessment,
+) -> Optional[DeclarationProximityEvidence]:
+    """Return pairwise pixel geometry only; no grouping or compliance inference."""
+    if not assessment.geometry or not other.geometry:
+        return None
+    box = assessment.geometry.pixel_box
+    other_box = other.geometry.pixel_box
+    center_x = (box.x_min + box.x_max) / 2
+    center_y = (box.y_min + box.y_max) / 2
+    other_x = (other_box.x_min + other_box.x_max) / 2
+    other_y = (other_box.y_min + other_box.y_max) / 2
+    dx = other_x - center_x
+    dy = other_y - center_y
+    overlaps_x = box.x_min <= other_box.x_max and other_box.x_min <= box.x_max
+    overlaps_y = box.y_min <= other_box.y_max and other_box.y_min <= box.y_max
+    if overlaps_x and overlaps_y:
+        direction = "OVERLAPPING"
+    elif abs(dx) >= abs(dy):
+        direction = "RIGHT" if dx >= 0 else "LEFT"
+    else:
+        direction = "BELOW" if dy >= 0 else "ABOVE"
+    gap_x = max(0.0, other_box.x_min - box.x_max, box.x_min - other_box.x_max)
+    gap_y = max(0.0, other_box.y_min - box.y_max, box.y_min - other_box.y_max)
+    edge_gap = math.hypot(gap_x, gap_y)
+    diagonal = math.hypot(assessment.geometry.image_width, assessment.geometry.image_height)
+    center_distance = math.hypot(dx, dy) / diagonal if diagonal else 0.0
+    return DeclarationProximityEvidence(
+        other_field=other.field,
+        other_evidence_ids=other.evidence_ids,
+        relative_direction=direction,
+        center_distance_ratio=round(center_distance, 4),
+        edge_gap_px=round(edge_gap, 2),
     )
 
 def assess_declaration(
@@ -278,6 +339,7 @@ def assess_declaration(
         polygons=valid_polygons,
         geometry=geometry,
         prominence=prominence,
+        relative_position_in_image=_relative_image_position(geometry),
         readability=readability,
         technical_status=readability.technical_readability,
         notes=notes
@@ -609,19 +671,51 @@ def generate_all_visual_findings(
                 )
                 
     # 4. Statutory Boundary Limitations (Explicitly Documented)
+    font_measurements = [
+        {
+            "field": item.field,
+            "view_id": item.view_id,
+            "bbox_height_px": item.geometry.pixel_box.height_px,
+            "height_to_image_ratio": item.prominence.height_to_image_ratio if item.prominence else None,
+            "height_to_median_line_height_ratio": (
+                item.prominence.height_to_median_line_height_ratio if item.prominence else None
+            ),
+            "ocr_confidence": item.readability.ocr_confidence,
+        }
+        for item in assessments if item.geometry
+    ]
     findings.append(
         VisualFinding(
             finding_id=f"finding_statutory_rule7_{capture_id[:8]}",
             check_type=VisualCheckType.PHYSICAL_FONT_SIZE_RULE_7,
             capture_id=capture_id,
             view_id=view_id,
-            status=VisualObservationStatus.NOT_EVALUABLE,
+            status=(
+                VisualObservationStatus.REVIEW_REQUIRED
+                if font_measurements else VisualObservationStatus.NOT_EVALUABLE
+            ),
+            metrics={
+                "physical_scale_available": False,
+                "relative_text_measurements": font_measurements,
+            },
             reason="Statutory minimum numeral and letter heights in millimetres under Rule 7 cannot be deterministically evaluated from uncalibrated digital images without a trusted physical scale reference.",
             legal_reference="Legal Metrology (Packaged Commodities) Rules, 2011 — Rule 7",
             limitations="DRISHTI strictly prohibits converting pixel dimensions to millimetres or inferring physical packaging dimensions from digital images."
         )
     )
     
+    placement_measurements = [
+        {
+            "field": item.field,
+            "view_id": item.view_id,
+            "normalized_box": item.geometry.normalized_box.model_dump(mode="json"),
+            "relative_position_in_image": item.relative_position_in_image,
+            "proximity_to_declarations": [
+                proximity.model_dump(mode="json") for proximity in item.proximity_to_declarations
+            ],
+        }
+        for item in assessments if item.geometry
+    ]
     findings.append(
         VisualFinding(
             finding_id=f"finding_statutory_contrast_{capture_id[:8]}",
@@ -641,7 +735,11 @@ def generate_all_visual_findings(
             check_type=VisualCheckType.PRINCIPAL_DISPLAY_PANEL_RULE_8,
             capture_id=capture_id,
             view_id=view_id,
-            status=VisualObservationStatus.NOT_EVALUABLE,
+            status=(
+                VisualObservationStatus.REVIEW_REQUIRED
+                if placement_measurements else VisualObservationStatus.NOT_EVALUABLE
+            ),
+            metrics={"measured_image_placement": placement_measurements},
             reason=f"Captured view '{view_id}' represents a camera view role and is not automatically classified as the statutory Principal Display Panel without surface area context.",
             legal_reference="Legal Metrology (Packaged Commodities) Rules, 2011 — Rule 8",
             limitations="Camera view roles (e.g. FRONT) are strictly separated from statutory Principal Display Panel determinations."
@@ -713,6 +811,18 @@ def assess_capture_visuals(
             has_clipped = True
             
         assessments.append(assessment)
+
+    # Attach pairwise measurements only after every declaration region on this
+    # surface has been constructed. These are descriptive coordinates, not a
+    # legal grouping or placement rule.
+    for assessment in assessments:
+        assessment.proximity_to_declarations = [
+            proximity
+            for other in assessments
+            if other is not assessment
+            for proximity in [_proximity_evidence(assessment, other)]
+            if proximity is not None
+        ]
         
     findings = generate_all_visual_findings(
         capture_id=capture_id,
@@ -777,18 +887,27 @@ def evaluate_visual_legal_rules(
     
     # 1. RULE 7: Minimum Numeral & Letter Height
     r7_findings = [f.finding_id for f in all_findings if f.check_type == VisualCheckType.PHYSICAL_FONT_SIZE_RULE_7]
+    r7_measurements = [
+        measurement
+        for finding in all_findings
+        if finding.check_type == VisualCheckType.PHYSICAL_FONT_SIZE_RULE_7
+        for measurement in finding.metrics.get("relative_text_measurements", [])
+    ]
     results.append(
         VisualRuleEvaluationResult(
             rule_id="RULE_7_MINIMUM_NUMERAL_HEIGHT",
             legal_reference="Legal Metrology (Packaged Commodities) Rules, 2011 — Rule 7 & Second Schedule",
             field="ALL_DECLARATIONS",
             capability=VisualCheckCapability.NOT_EVALUABLE_FROM_CURRENT_CAPTURE,
-            status="NOT_EVALUABLE",
+            status="REVIEW_REQUIRED" if r7_measurements else "NOT_EVALUABLE",
             requires_inspector_review=True,
             evidence_ids=ev_list,
             capture_ids=all_capture_ids,
             supporting_visual_findings=r7_findings,
-            metrics={"requires_physical_scale_reference": True},
+            metrics={
+                "requires_physical_scale_reference": True,
+                "relative_text_measurements": r7_measurements,
+            },
             reason="Statutory minimum numeral and letter heights in millimetres under Rule 7 cannot be deterministically verified from camera images without a trusted physical scale reference and principal display panel area measurement.",
             limitations="DRISHTI strictly prohibits converting pixel dimensions to millimetres or estimating physical packaging dimensions from digital images."
         )
@@ -796,18 +915,27 @@ def evaluate_visual_legal_rules(
     
     # 2. RULE 8: Principal Display Panel Placement
     r8_pdp_findings = [f.finding_id for f in all_findings if f.check_type == VisualCheckType.PRINCIPAL_DISPLAY_PANEL_RULE_8]
+    r8_placement_measurements = [
+        measurement
+        for finding in all_findings
+        if finding.check_type == VisualCheckType.PRINCIPAL_DISPLAY_PANEL_RULE_8
+        for measurement in finding.metrics.get("measured_image_placement", [])
+    ]
     results.append(
         VisualRuleEvaluationResult(
             rule_id="RULE_8_PRINCIPAL_DISPLAY_PANEL_PLACEMENT",
             legal_reference="Legal Metrology (Packaged Commodities) Rules, 2011 — Rule 8",
             field="ALL_DECLARATIONS",
             capability=VisualCheckCapability.NOT_EVALUABLE_FROM_CURRENT_CAPTURE,
-            status="NOT_EVALUABLE",
+            status="REVIEW_REQUIRED" if r8_placement_measurements else "NOT_EVALUABLE",
             requires_inspector_review=True,
             evidence_ids=ev_list,
             capture_ids=all_capture_ids,
             supporting_visual_findings=r8_pdp_findings,
-            metrics={"view_roles_present": [c.view_id for c in captures]},
+            metrics={
+                "view_roles_present": [c.view_id for c in captures],
+                "measured_image_placement": r8_placement_measurements,
+            },
             reason="Photographed view roles (e.g. FRONT) represent camera perspectives and are not automatically classified as the statutory Principal Display Panel without surface area context.",
             limitations="Camera view roles are strictly separated from statutory Principal Display Panel determinations."
         )

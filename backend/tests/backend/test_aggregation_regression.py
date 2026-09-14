@@ -73,7 +73,7 @@ def test_manufacturer_valid_declaration():
     assert mfg is not None
     assert mfg.status == "DETECTED"
     assert mfg.normalized_value.role == "MARKETER"
-    assert mfg.normalized_value.name == "EXAMPLE FOODS"
+    assert mfg.normalized_value.name == "Example Foods"
 
 def test_consumer_care_boundary():
     """

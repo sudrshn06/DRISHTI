@@ -1,8 +1,8 @@
 from datetime import datetime
 import math
 from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import select, desc, func
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import select, desc, func, or_, cast, Text, exists
 
 from app.models.inspection import InspectionModel, CaptureModel, ReportSnapshotModel
 from app.models.user import UserModel
@@ -71,6 +71,25 @@ class InspectionRepository:
         qa_dict = capture.quality_assessment.model_dump() if hasattr(capture.quality_assessment, "model_dump") else capture.quality_assessment
         va_dict = capture.visual_assessment.model_dump() if hasattr(capture.visual_assessment, "model_dump") else capture.visual_assessment
         cands_list = [c.model_dump() if hasattr(c, "model_dump") else c for c in capture.field_candidates]
+        deterministic_cands = capture.deterministic_field_candidates
+        if deterministic_cands is None:
+            from app.services.reproducibility_service import deterministic_candidates_for_capture
+            deterministic_cands = deterministic_candidates_for_capture(capture)
+        deterministic_cands_list = [
+            c.model_dump() if hasattr(c, "model_dump") else c
+            for c in deterministic_cands
+        ]
+        provenance_dict = (
+            capture.processing_provenance.model_dump()
+            if hasattr(capture.processing_provenance, "model_dump")
+            else capture.processing_provenance
+        )
+        candidates_payload = {
+            "schema_version": "2.0",
+            "candidates": cands_list,
+            "deterministic_candidates": deterministic_cands_list,
+            "processing_provenance": provenance_dict,
+        }
         ai_dict = capture.ai_analysis.model_dump(mode="json") if hasattr(capture.ai_analysis, "model_dump") else capture.ai_analysis
 
         return CaptureModel(
@@ -87,7 +106,7 @@ class InspectionRepository:
             pipeline_status=capture.pipeline_status,
             quality_assessment=qa_dict,
             visual_assessment=va_dict,
-            field_candidates=cands_list,
+            field_candidates=candidates_payload,
             ai_analysis=ai_dict,
         )
 
@@ -133,6 +152,31 @@ class InspectionRepository:
         if user_id:
             stmt = stmt.where(InspectionModel.created_by_user_id == user_id)
         stmt = stmt.order_by(desc(InspectionModel.created_at)).offset(skip).limit(limit)
+        return list(db.scalars(stmt).all())
+
+    @staticmethod
+    def list_related_reference_candidates(
+        db: Session,
+        *,
+        exclude_inspection_id: str,
+        user_id: Optional[str],
+        limit: int = 100,
+    ) -> List[InspectionModel]:
+        """Load recent metadata/candidates only; never rerun OCR or compliance."""
+        stmt = (
+            select(InspectionModel)
+            .options(
+                selectinload(InspectionModel.captures),
+                selectinload(InspectionModel.report_snapshots),
+            )
+            .where(InspectionModel.inspection_id != exclude_inspection_id)
+        )
+        if user_id:
+            stmt = stmt.where(InspectionModel.created_by_user_id == user_id)
+        stmt = stmt.order_by(
+            InspectionModel.created_at.desc(),
+            InspectionModel.inspection_id.desc(),
+        ).limit(limit)
         return list(db.scalars(stmt).all())
 
     @staticmethod
@@ -191,9 +235,28 @@ class InspectionRepository:
 
         if search and search.strip():
             term = f"%{search.strip()}%"
+            capture_value_match = exists(
+                select(CaptureModel.capture_id).where(
+                    CaptureModel.inspection_id == InspectionModel.inspection_id,
+                    cast(CaptureModel.field_candidates, Text).ilike(term),
+                )
+            )
+            snapshot_value_match = exists(
+                select(ReportSnapshotModel.report_id).where(
+                    ReportSnapshotModel.inspection_id == InspectionModel.inspection_id,
+                    cast(ReportSnapshotModel.snapshot_payload, Text).ilike(term),
+                )
+            )
             conditions.append(
-                InspectionModel.inspection_id.ilike(term) |
-                InspectionModel.product_category.ilike(term)
+                or_(
+                    InspectionModel.inspection_id.ilike(term),
+                    InspectionModel.product_category.ilike(term),
+                    InspectionModel.reference_date.ilike(term),
+                    InspectionModel.lifecycle_status.ilike(term),
+                    latest_snapshot_sub.ilike(term),
+                    capture_value_match,
+                    snapshot_value_match,
+                )
             )
 
         if lifecycle_status:
@@ -344,21 +407,105 @@ class InspectionRepository:
             GeminiPackageAnalysis,
             GeminiPackageAuditRecord,
         )
+        from pydantic import ValidationError
 
         qa = ImageQualityAssessment.model_validate(cap_model.quality_assessment) if cap_model.quality_assessment else None
         va = CaptureVisualAssessmentSummary.model_validate(cap_model.visual_assessment) if cap_model.visual_assessment else None
+        stored_candidates = cap_model.field_candidates or []
+        if isinstance(stored_candidates, dict):
+            candidate_rows = stored_candidates.get("candidates", [])
+            deterministic_rows = stored_candidates.get("deterministic_candidates")
+            provenance_row = stored_candidates.get("processing_provenance")
+        else:
+            candidate_rows = stored_candidates
+            deterministic_rows = None
+            provenance_row = None
+
         cands = [
             candidate
             for candidate in (
                 FieldCandidate.model_validate(c)
-                for c in (cap_model.field_candidates or [])
+                for c in candidate_rows
             )
             if is_authoritative_field_candidate(candidate)
         ]
+        deterministic_cands = (
+            [FieldCandidate.model_validate(c) for c in deterministic_rows]
+            if deterministic_rows is not None
+            else None
+        )
+        from app.schemas.reproducibility import CaptureProcessingProvenance
+        provenance = (
+            CaptureProcessingProvenance.model_validate(provenance_row)
+            if provenance_row
+            else None
+        )
         ai_analysis = None
         if cap_model.ai_analysis:
             if "analysis" in cap_model.ai_analysis:
-                ai_analysis = GeminiPackageAuditRecord.model_validate(cap_model.ai_analysis)
+                audit_payload = cap_model.ai_analysis
+                try:
+                    # Current envelopes always pass the unchanged strict schema.
+                    ai_analysis = GeminiPackageAuditRecord.model_validate(audit_payload)
+                except ValidationError as exc:
+                    # One intermediate Gemini transport recorded attempt diagnostics
+                    # in analysis.metadata. Adapt only those six known fields at this
+                    # read boundary; arbitrary extras must remain validation errors.
+                    legacy_metadata_fields = frozenset({
+                        "primary_attempt_status",
+                        "primary_attempt_response_id",
+                        "primary_attempt_failure_code",
+                        "targeted_fallback_status",
+                        "targeted_fallback_response_id",
+                        "targeted_fallback_failure_code",
+                    })
+                    allowed_error_locations = {
+                        ("analysis", "metadata", field)
+                        for field in legacy_metadata_fields
+                    }
+                    if not exc.errors() or any(
+                        error["type"] != "extra_forbidden"
+                        or tuple(error["loc"]) not in allowed_error_locations
+                        for error in exc.errors()
+                    ):
+                        raise
+
+                    analysis_payload = audit_payload.get("analysis")
+                    metadata_payload = (
+                        analysis_payload.get("metadata")
+                        if isinstance(analysis_payload, dict)
+                        else None
+                    )
+                    if not isinstance(metadata_payload, dict) or not (
+                        legacy_metadata_fields & metadata_payload.keys()
+                    ):
+                        raise
+
+                    compatible_metadata = {
+                        key: value
+                        for key, value in metadata_payload.items()
+                        if key not in legacy_metadata_fields
+                    }
+                    compatible_analysis = {
+                        **analysis_payload,
+                        "metadata": compatible_metadata,
+                    }
+                    compatible_envelope = {
+                        **audit_payload,
+                        "analysis": compatible_analysis,
+                    }
+                    ai_analysis = GeminiPackageAuditRecord.model_validate(compatible_envelope)
+
+                # Capture identity and content hash come from the trusted database
+                # columns for both current and intermediate historical envelopes.
+                ai_analysis = ai_analysis.model_copy(update={
+                    "inspection_id": cap_model.inspection_id,
+                    "capture_evidence": [GeminiCaptureEvidenceReference(
+                        capture_id=cap_model.capture_id,
+                        view_id=cap_model.view_id,
+                        image_sha256=cap_model.image_sha256,
+                    )],
+                })
             else:
                 # Backward-compatible rehydration for captures written by the
                 # earliest uncommitted Stage 1 shape. The server-owned capture
@@ -386,6 +533,8 @@ class InspectionRepository:
             quality_assessment=qa,
             visual_assessment=va,
             field_candidates=cands,
+            deterministic_field_candidates=deterministic_cands,
+            processing_provenance=provenance,
             ai_analysis=ai_analysis,
             status=cap_model.status,
             pipeline_status=cap_model.pipeline_status
@@ -406,11 +555,22 @@ class InspectionRepository:
             else None
         )
 
-        # Rebuild through the same authoritative aggregation and officer overlay
-        # used for live sessions. AI observations never enter this boundary.
+        # Rebuild both the officer-facing hybrid view and the separate OCR-only
+        # legal input stream through the same stable aggregation and overrides.
         from app.services.officer_review_service import apply_officer_overrides
         from app.services.inspection_service import aggregate_candidates
+        from app.services.reproducibility_service import deterministic_candidates_for_capture
         all_cands = apply_officer_overrides(aggregate_candidates(captures_domain), overrides)
+        deterministic_captures = [
+            capture.model_copy(update={
+                "field_candidates": deterministic_candidates_for_capture(capture),
+            })
+            for capture in captures_domain
+        ]
+        deterministic_cands = apply_officer_overrides(
+            aggregate_candidates(deterministic_captures),
+            overrides,
+        )
 
         latest_snapshot = None
         if model.lifecycle_status == "FINALIZED" and model.report_snapshots:
@@ -433,6 +593,7 @@ class InspectionRepository:
             lifecycle_status=getattr(model, "lifecycle_status", "DRAFT") or "DRAFT",
             captures=captures_domain,
             aggregated_candidates=all_cands,
+            deterministic_aggregated_candidates=deterministic_cands,
             dismissed_clarifications=list(model.dismissed_clarifications or []),
             package_information_review=review,
             officer_declaration_overrides=overrides,

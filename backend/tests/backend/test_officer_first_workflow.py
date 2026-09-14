@@ -40,10 +40,10 @@ def test_photo_flow_is_mobile_friendly_and_unreadable_is_not_absent():
     assert 'capture="environment"' in inspection_source
     assert "Package information detected" in package_source
     assert "Take another photograph" in package_source
-    assert "No unreadable declaration has been treated as legally absent" in package_source
+    assert "Unreadable information is kept for officer review and is not treated as legally absent" in package_source
     correction_source = _frontend_source("components/inspection/DeclarationCorrectionModal.jsx")
     assert "Supporting photograph" in correction_source
-    assert "The original remains preserved in the inspection record" in correction_source
+    assert "The original machine observation remains preserved in the inspection record" in correction_source
 
 
 def test_complaint_requires_review_and_never_submits_automatically():
@@ -53,9 +53,10 @@ def test_complaint_requires_review_and_never_submits_automatically():
     env_example = (PROJECT_ROOT / ".env.example").read_text(encoding="utf-8")
     compose_source = (PROJECT_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
 
-    assert "I have reviewed the complaint draft and downloaded evidence package." in complaint_source
-    assert "disabled={!externalPortalUrl || !success || !submissionConfirmed}" in complaint_source
-    assert "showSubmissionModal" in complaint_source
+    assert "showPortalConfirmation" in complaint_source
+    assert "handleConfirmedPortalHandoff" in complaint_source
+    assert "Confirm and open portal" in complaint_source
+    assert "disabled={!portalConfigured}" in complaint_source
     assert "DRISHTI will not submit the complaint" in complaint_source
     assert "window.open(externalPortalUrl" in complaint_source
     assert "href={externalPortalUrl}" not in complaint_source

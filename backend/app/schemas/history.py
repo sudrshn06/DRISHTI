@@ -43,3 +43,18 @@ class PaginatedInspectionHistory(BaseModel):
     page_size: int = Field(..., description="Number of items per page")
     total: int = Field(..., description="Total count of matching inspections")
     total_pages: int = Field(..., description="Total number of available pages")
+
+
+class RelatedInspectionReference(BaseModel):
+    """Read-only pointer to a prior inspection with a strong stored-identifier match."""
+
+    inspection_id: str
+    reference_date: str
+    created_at: str
+    lifecycle_status: str
+    overall_disposition: Optional[str] = None
+    product_name: Optional[str] = None
+    brand: Optional[str] = None
+    business_names: List[str] = Field(default_factory=list)
+    match_basis: List[str] = Field(default_factory=list)
+    reference_only: bool = True

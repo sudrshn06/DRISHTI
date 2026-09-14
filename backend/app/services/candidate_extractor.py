@@ -5,8 +5,10 @@ from app.schemas.ocr import OcrLine, FieldCandidate, NetQuantityNormalized
 from app.services.declaration_normalizer import (
     parse_mrp,
     parse_net_quantity,
+    parse_net_quantity_observation,
     parse_business_declaration,
     parse_date_declaration,
+    parse_date_observation,
     parse_consumer_care,
     parse_country_of_origin,
     parse_common_generic_name,
@@ -107,7 +109,7 @@ def extract_candidates(
         current_confidence = line.confidence
 
         def get_lookahead_text(max_lines=3):
-            lookahead_text = text
+            lookahead_text = line.text
             lookahead_evidence = [evidence_id] if evidence_id else []
             lookahead_confidence = [current_confidence]
             consumed_count = 0
@@ -166,7 +168,13 @@ def extract_candidates(
                 use_conf = lookahead_mrp_conf if (lookahead_mrp_text and lookahead_mrp_conf is not None) else current_confidence
                 use_raw = lookahead_mrp_text if lookahead_mrp_text else line.text
                 use_ev = lookahead_mrp_ev if lookahead_mrp_ev else ([evidence_id] if evidence_id else [])
-                cand.status = "DETECTED" if use_conf >= 0.8 else "REVIEW_REQUIRED"
+                substantive_text = re.sub(
+                    r"\b(?:M\.?R\.?P\.?|MAXIMUM\s+RETAIL\s+PRICE)\b",
+                    "",
+                    use_raw,
+                    flags=re.IGNORECASE,
+                ).strip(" \t\r\n:.-")
+                cand.status = "DETECTED" if use_conf >= 0.8 and substantive_text else "REVIEW_REQUIRED"
                 cand.normalized_value = parsed_mrp
                 cand.raw_value = use_raw
                 cand.confidence = use_conf
@@ -174,13 +182,24 @@ def extract_candidates(
                     if ev not in cand.evidence_ids:
                         cand.evidence_ids.append(ev)
             elif ("MRP" in text or "MAXIMUM RETAIL PRICE" in text) and candidates["MRP"].status == "NOT_DETECTED":
-                # Keyword detected but value couldn't be parsed
+                # A reliable declaration label/wording remains observed even
+                # when its numeric component is structurally unparseable.
                 cand = candidates["MRP"]
-                cand.status = "REVIEW_REQUIRED"
-                cand.raw_value = line.text
-                cand.confidence = current_confidence
-                if evidence_id and evidence_id not in cand.evidence_ids:
-                    cand.evidence_ids.append(evidence_id)
+                use_raw = lookahead_mrp_text if lookahead_mrp_text else line.text
+                use_conf = lookahead_mrp_conf if lookahead_mrp_conf is not None else current_confidence
+                use_ev = lookahead_mrp_ev if lookahead_mrp_ev else ([evidence_id] if evidence_id else [])
+                substantive_text = re.sub(
+                    r"\b(?:M\.?R\.?P\.?|MAXIMUM\s+RETAIL\s+PRICE)\b",
+                    "",
+                    use_raw,
+                    flags=re.IGNORECASE,
+                ).strip(" \t\r\n:.-")
+                cand.status = "DETECTED" if use_conf >= 0.8 and substantive_text else "REVIEW_REQUIRED"
+                cand.raw_value = use_raw
+                cand.confidence = use_conf
+                for ev in use_ev:
+                    if ev not in cand.evidence_ids:
+                        cand.evidence_ids.append(ev)
 
         # --- UNIT SALE PRICE ---
         # Look for explicit USP text or price/unit formats like Rs 10/kg
@@ -244,8 +263,12 @@ def extract_candidates(
         if is_explicit_nq or (is_standalone_quantity and not in_nutrition_context and not has_nutrition_words):
             lookahead_text, lookahead_ev, lookahead_conf, consumed = get_lookahead_text(max_lines=1)
             
-            parsed_nq = parse_net_quantity(text)
-            parsed_lookahead = parse_net_quantity(lookahead_text)
+            parsed_nq = parse_net_quantity_observation(text) if is_explicit_nq else parse_net_quantity(text)
+            parsed_lookahead = (
+                parse_net_quantity_observation(lookahead_text)
+                if is_explicit_nq
+                else parse_net_quantity(lookahead_text)
+            )
             
             if not parsed_nq and parsed_lookahead:
                 parsed_nq = parsed_lookahead
@@ -345,7 +368,7 @@ def extract_candidates(
             or re.search(r"\b(0[1-9]|1[0-2])[-/](20\d{2})\b", text)
             or re.search(r"\b20[2-3][0-9]\b", text)
         ):
-            parsed_current = parse_date_declaration(text)
+            parsed_current = parse_date_observation(text)
             if parsed_current:
                 cand = FieldCandidate(
                     field="MONTH_YEAR",
@@ -359,7 +382,7 @@ def extract_candidates(
             else:
                 # Sometimes dates are split over lines, e.g. "Best Before\n12 Months" or "MFD\n12/2023"
                 lookahead_text, lookahead_ev, lookahead_conf, consumed = get_lookahead_text(max_lines=1)
-                parsed_date = parse_date_declaration(lookahead_text)
+                parsed_date = parse_date_observation(lookahead_text)
                 
                 if parsed_date:
                     consumed_date_indices.add(i + 1)
@@ -821,7 +844,7 @@ def extract_candidates(
     # ----------------------------------------------------
     # FSSAI / Food Label candidate extraction (Phase 10C)
     # ----------------------------------------------------
-    fssai_lic = None
+    fssai_lic_observations = []
     veg_nonveg = None
     ingredients_statement = None
     ingredients_tokens = []
@@ -829,7 +852,6 @@ def extract_candidates(
     nutrition_detected = False
     nut_text_lines = []
     
-    lic_evidence_ids = []
     veg_evidence_ids = []
     ing_evidence_ids = []
     all_evidence_ids = []
@@ -846,23 +868,42 @@ def extract_candidates(
         line_text_upper = line_text.upper()
         ev_id = evidence_map.get(str(idx))
         
-        # 1. Licence number (14 digits starting with 1 or 2, allowing optional spaces/hyphens)
+        # 1. Licence number. Anchored malformed numbers are preserved for the
+        # FOOD-scoped deterministic format validator instead of disappearing.
         clean_lic_digits = re.sub(r"[^\d]", "", line_text)
         if lic_match := re.search(r"\b([12]\d{13})\b", clean_lic_digits):
-            fssai_lic = lic_match.group(1)
-            if ev_id and ev_id not in lic_evidence_ids:
-                lic_evidence_ids.append(ev_id)
+            fssai_lic_observations.append({
+                "value": lic_match.group(1),
+                "confidence": line.confidence,
+                "evidence_ids": [ev_id] if ev_id else [],
+            })
         elif any(k in line_text_upper for k in ["FSSAI", "LIC NO", "LIC. NO", "LICENCE NO", "LICENSE NO"]):
-            # Check lookahead on next line if anchor is standalone
-            if idx + 1 < len(lines):
+            anchored_digits = re.sub(r"\D", "", line_text)
+            if anchored_digits:
+                fssai_lic_observations.append({
+                    "value": anchored_digits,
+                    "confidence": line.confidence,
+                    "evidence_ids": [ev_id] if ev_id else [],
+                })
+            elif idx + 1 < len(lines):
                 next_clean = re.sub(r"[^\d]", "", lines[idx + 1].text)
-                if next_match := re.search(r"\b([12]\d{13})\b", next_clean):
-                    fssai_lic = next_match.group(1)
-                    if ev_id and ev_id not in lic_evidence_ids:
-                        lic_evidence_ids.append(ev_id)
+                if next_clean:
+                    next_evidence = [ev_id] if ev_id else []
                     next_ev = evidence_map.get(str(idx + 1))
-                    if next_ev and next_ev not in lic_evidence_ids:
-                        lic_evidence_ids.append(next_ev)
+                    if next_ev and next_ev not in next_evidence:
+                        next_evidence.append(next_ev)
+                    fssai_lic_observations.append({
+                        "value": next_clean,
+                        "confidence": (line.confidence + lines[idx + 1].confidence) / 2,
+                        "evidence_ids": next_evidence,
+                    })
+            else:
+                fssai_lic_observations.append({
+                    "value": None,
+                    "raw_value": line_text,
+                    "confidence": line.confidence,
+                    "evidence_ids": [ev_id] if ev_id else [],
+                })
 
         # 2. Veg / Non Veg
         if veg_match := re.search(r"\b(100%\s*VEGETARIAN|100%\s*VEG|PURE\s*VEGETARIAN|PURE\s*VEG|VEGETARIAN|NON[- ]VEGETARIAN|VEG|NON[- ]VEG|GREEN\s*DOT|BROWN\s*DOT|BROWN\s*TRIANGLE|GREEN\s*CIRCLE)\b", line_text_upper):
@@ -916,14 +957,28 @@ def extract_candidates(
                 nut_evidence_ids.append(ev_id)
 
     # Append FSSAI candidates
-    if fssai_lic:
-        final_candidates.append(FieldCandidate(
-            field="FSSAI_LICENCE",
-            status="DETECTED",
-            raw_value=fssai_lic,
-            evidence_ids=lic_evidence_ids,
-            capture_ids=lic_capture_ids
-        ))
+    if fssai_lic_observations:
+        unique_licence_observations = {}
+        for observation in fssai_lic_observations:
+            key = observation.get("value") or observation.get("raw_value")
+            existing = unique_licence_observations.get(key)
+            if existing:
+                existing["evidence_ids"] = sorted(set(existing["evidence_ids"] + observation["evidence_ids"]))
+                existing["confidence"] = max(existing["confidence"], observation["confidence"])
+            else:
+                unique_licence_observations[key] = observation
+        for _, observation in sorted(unique_licence_observations.items(), key=lambda item: str(item[0])):
+            value = observation.get("value")
+            confidence = observation["confidence"]
+            final_candidates.append(FieldCandidate(
+                field="FSSAI_LICENCE",
+                status="DETECTED" if value and confidence >= 0.8 else "REVIEW_REQUIRED",
+                raw_value=value or observation.get("raw_value"),
+                normalized_value=value,
+                confidence=confidence,
+                evidence_ids=observation["evidence_ids"],
+                capture_ids=lic_capture_ids,
+            ))
     else:
         final_candidates.append(FieldCandidate(field="FSSAI_LICENCE", status="NOT_DETECTED"))
 

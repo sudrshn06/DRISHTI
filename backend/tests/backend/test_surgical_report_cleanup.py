@@ -324,7 +324,8 @@ def test_dashboard_counts_roles_context_and_complaint_wording_are_explicit() -> 
     for category in ("Compliant", "Non-compliant", "Review", "Not applicable"):
         assert category in inspection
     assert "statutoryFindings.length" in inspection
-    assert "No confirmed non-compliance finding. No complaint has been generated." in inspection
+    assert "regulatoryEscalationAvailable &&" in inspection
+    assert "Nothing is submitted automatically." in inspection
     assert "Officer-provided Product Origin Classification" in inspection
     assert "Business declaration" in package_card
     assert "Business Declaration" in evidence_panel

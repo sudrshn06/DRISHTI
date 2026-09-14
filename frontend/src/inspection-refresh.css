@@ -1,0 +1,350 @@
+/* DRISHTI Inspect Product visual refresh.
+   Presentation-only overrides scoped to the inspection workspace. */
+
+.portal-page.pb-40 {
+  --inspection-surface: #ffffff;
+  --inspection-muted-surface: #f7fafb;
+  --inspection-border: #d9e2e8;
+  --inspection-border-strong: #c7d5dd;
+  --inspection-navy: #102a43;
+  --inspection-navy-soft: #163a5f;
+  --inspection-teal: #087f83;
+  --inspection-teal-soft: #e8f6f5;
+  --inspection-green: #278342;
+  --inspection-green-soft: #edf8f0;
+  --inspection-amber: #b7791f;
+  --inspection-amber-soft: #fff8e8;
+  --inspection-red: #b42318;
+  --inspection-shadow: 0 10px 28px rgba(16, 42, 67, 0.07);
+  scroll-behavior: smooth;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl,
+.portal-page.pb-40 #package-photo-section .bg-white.rounded-xl,
+.portal-page.pb-40 #package-photo-section .portal-card {
+  border-color: var(--inspection-border) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--inspection-shadow) !important;
+  background: var(--inspection-surface) !important;
+}
+
+/* Inspection record header */
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child {
+  position: relative;
+  overflow: hidden;
+  border-top: 3px solid var(--inspection-teal) !important;
+  padding: 20px !important;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto auto;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(8, 127, 131, 0.08), transparent 68%);
+  pointer-events: none;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child > .flex:first-child {
+  position: relative;
+  z-index: 1;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child h1 {
+  color: var(--inspection-navy) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child h1 + span {
+  border-radius: 999px !important;
+  padding-inline: 10px !important;
+  min-height: 26px;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child button[class*="bg-slate-100"] {
+  background: #fff !important;
+  border: 1px solid var(--inspection-border) !important;
+  box-shadow: 0 2px 8px rgba(16, 42, 67, 0.04);
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child button[class*="bg-slate-100"]:hover {
+  border-color: #aabcc6 !important;
+  background: #f8fafb !important;
+}
+
+/* Workflow steps */
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child > .flex.gap-2.overflow-x-auto {
+  gap: 8px !important;
+  margin-top: 2px;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child > .flex.gap-2.overflow-x-auto > div {
+  min-height: 50px;
+  border-radius: 12px !important;
+  background: #fbfcfd;
+  border-color: var(--inspection-border) !important;
+  font-weight: 700;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child > .flex.gap-2.overflow-x-auto > div[class*="bg-emerald"] {
+  background: var(--inspection-green-soft) !important;
+  border-color: #bee0c7 !important;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl:first-child > .flex.gap-2.overflow-x-auto > div[class*="bg-indigo"] {
+  background: var(--inspection-teal-soft) !important;
+  border-color: #bcd4d5 !important;
+}
+
+/* Normalize prototype indigo only within inspection workspace. */
+.portal-page.pb-40 .bg-indigo-600 {
+  background-color: var(--inspection-teal) !important;
+}
+
+.portal-page.pb-40 .hover\:bg-indigo-700:hover {
+  background-color: #066f73 !important;
+}
+
+.portal-page.pb-40 .text-indigo-600,
+.portal-page.pb-40 .text-indigo-700 {
+  color: var(--inspection-teal) !important;
+}
+
+.portal-page.pb-40 .bg-indigo-50 {
+  background-color: var(--inspection-teal-soft) !important;
+}
+
+.portal-page.pb-40 .border-indigo-200,
+.portal-page.pb-40 .border-indigo-400,
+.portal-page.pb-40 .border-indigo-500,
+.portal-page.pb-40 .border-indigo-600 {
+  border-color: var(--inspection-teal) !important;
+}
+
+/* Save/offline/guidance banners */
+.portal-page.pb-40 [role="status"],
+.portal-page.pb-40 [role="alert"],
+.portal-page.pb-40 > div[class*="bg-amber-50"],
+.portal-page.pb-40 > div[class*="bg-indigo-50"],
+.portal-page.pb-40 > div[class*="bg-rose-50"] {
+  border-radius: 14px !important;
+  box-shadow: 0 4px 14px rgba(16, 42, 67, 0.04);
+}
+
+.portal-page.pb-40 > p.text-right.text-xs {
+  margin-top: -8px;
+  padding-right: 2px;
+  color: #718096 !important;
+}
+
+/* Main workspace */
+.portal-page.pb-40 #package-photo-section {
+  gap: 28px !important;
+}
+
+.portal-page.pb-40 .inspection-workspace-column {
+  gap: 28px !important;
+}
+
+.portal-page.pb-40 .workspace-photographs,
+.portal-page.pb-40 .workspace-assessment,
+.portal-page.pb-40 .workspace-package-information,
+.portal-page.pb-40 .workspace-details {
+  gap: 24px !important;
+}
+
+.portal-page.pb-40 #package-photo-section h2,
+.portal-page.pb-40 #package-photo-section h3,
+.portal-page.pb-40 #package-photo-section h4 {
+  color: var(--inspection-navy) !important;
+}
+
+/* Photograph capture card */
+.portal-page.pb-40 .workspace-photographs > .bg-white.rounded-xl {
+  padding: 22px !important;
+}
+
+.portal-page.pb-40 .workspace-photographs > .bg-white.rounded-xl > .flex.items-center.justify-between:first-child {
+  align-items: flex-start !important;
+}
+
+.portal-page.pb-40 .workspace-photographs > .bg-white.rounded-xl > .grid > div.border.rounded-xl {
+  border-radius: 14px !important;
+  min-height: 72px;
+  background: #fbfcfd;
+  border-color: var(--inspection-border) !important;
+}
+
+.portal-page.pb-40 .workspace-photographs > .bg-white.rounded-xl > .grid > div.border.rounded-xl:hover {
+  border-color: #9fb9c1 !important;
+  background: #f7fafb !important;
+  box-shadow: 0 6px 18px rgba(16, 42, 67, 0.05);
+}
+
+.portal-page.pb-40 .workspace-photographs > .bg-white.rounded-xl > .grid > div.border.rounded-xl.border-indigo-500 {
+  border-color: var(--inspection-teal) !important;
+  background: var(--inspection-teal-soft) !important;
+  box-shadow: 0 0 0 2px rgba(8, 127, 131, 0.10);
+}
+
+.portal-page.pb-40 .workspace-photographs label[class*="cursor-pointer"] {
+  font-weight: 700 !important;
+  box-shadow: none;
+}
+
+/* Capture progress bar */
+.portal-page.pb-40 .workspace-photographs .h-2.rounded-full {
+  overflow: hidden;
+  background: #e8eef1 !important;
+}
+
+.portal-page.pb-40 .workspace-photographs .h-2.rounded-full.bg-indigo-600,
+.portal-page.pb-40 .workspace-photographs .h-2.rounded-full > .bg-indigo-600 {
+  background: var(--inspection-teal) !important;
+}
+
+/* Legal assessment and evidence areas */
+.portal-page.pb-40 .workspace-assessment > .bg-white.rounded-xl,
+.portal-page.pb-40 .workspace-package-information > .bg-white.rounded-xl,
+.portal-page.pb-40 .workspace-details > .bg-white.rounded-xl {
+  padding: 22px !important;
+}
+
+.portal-page.pb-40 .workspace-assessment .text-amber-600,
+.portal-page.pb-40 .workspace-assessment .text-amber-700,
+.portal-page.pb-40 .workspace-assessment .text-amber-800 {
+  color: #9a6518 !important;
+}
+
+.portal-page.pb-40 .workspace-assessment .bg-white.rounded-xl .rounded-lg.border,
+.portal-page.pb-40 .workspace-details .rounded-lg.border {
+  border-color: var(--inspection-border) !important;
+}
+
+.portal-page.pb-40 .workspace-assessment .bg-white.rounded-xl .rounded-lg.border:hover {
+  border-color: #a9bbc5 !important;
+}
+
+/* Findings counter chips */
+.portal-page.pb-40 .workspace-assessment span[class*="bg-emerald-100"],
+.portal-page.pb-40 .workspace-assessment span[class*="bg-rose-100"],
+.portal-page.pb-40 .workspace-assessment span[class*="bg-amber-100"],
+.portal-page.pb-40 .workspace-assessment span[class*="bg-slate-100"] {
+  border-radius: 999px !important;
+  padding: 4px 8px !important;
+}
+
+/* Buttons: consistent regulatory-workspace geometry */
+.portal-page.pb-40 button,
+.portal-page.pb-40 label[class*="cursor-pointer"] {
+  border-radius: 10px !important;
+}
+
+.portal-page.pb-40 button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.portal-page.pb-40 button:disabled {
+  box-shadow: none !important;
+}
+
+/* Finalized report area */
+.portal-page.pb-40 > .bg-white.rounded-xl.space-y-4 {
+  border-top: 3px solid var(--inspection-green) !important;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl.space-y-4 .bg-slate-50\/60 {
+  border-color: var(--inspection-border) !important;
+  background: #f8fafb !important;
+}
+
+.portal-page.pb-40 > .bg-white.rounded-xl.space-y-4 .bg-red-50\/40 {
+  border-color: #e6bbb5 !important;
+  background: #fff8f7 !important;
+}
+
+/* Finalize confirmation modal, scoped by high-z overlay. */
+.portal-page.pb-40 ~ div.fixed.inset-0,
+body > div.fixed.inset-0 {
+  backdrop-filter: blur(5px);
+}
+
+/* Start-inspection state */
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 {
+  max-width: 760px !important;
+  padding-top: 36px !important;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 > .bg-white.rounded-xl {
+  border-radius: 20px !important;
+  border-color: var(--portal-border) !important;
+  border-top: 3px solid var(--portal-teal) !important;
+  box-shadow: 0 18px 45px rgba(16, 42, 67, 0.10) !important;
+  padding: 30px !important;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 > .bg-white.rounded-xl h2 {
+  color: var(--portal-navy) !important;
+  font-size: 1.35rem !important;
+  letter-spacing: -0.02em;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 .bg-indigo-50 {
+  background: var(--portal-teal-soft) !important;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 .text-indigo-600 {
+  color: var(--portal-teal) !important;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 .bg-indigo-600 {
+  background: var(--portal-navy) !important;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 .hover\:bg-indigo-700:hover {
+  background: var(--portal-navy-soft) !important;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 details {
+  border-radius: 12px !important;
+  background: #f8fafb;
+  border-color: var(--portal-border) !important;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 input[type="date"] {
+  min-height: 48px;
+  background: #fff !important;
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 button[type="submit"] {
+  background: var(--portal-navy) !important;
+  box-shadow: 0 10px 24px rgba(16, 42, 67, 0.13);
+}
+
+.max-w-2xl.mx-auto.py-8.px-4.space-y-4 button[type="submit"]:hover {
+  background: var(--portal-navy-soft) !important;
+}
+
+@media (max-width: 767px) {
+  .portal-page.pb-40 > .bg-white.rounded-xl:first-child,
+  .portal-page.pb-40 #package-photo-section .bg-white.rounded-xl {
+    border-radius: 14px !important;
+  }
+
+  .portal-page.pb-40 .workspace-photographs > .bg-white.rounded-xl,
+  .portal-page.pb-40 .workspace-assessment > .bg-white.rounded-xl,
+  .portal-page.pb-40 .workspace-package-information > .bg-white.rounded-xl,
+  .portal-page.pb-40 .workspace-details > .bg-white.rounded-xl {
+    padding: 18px !important;
+  }
+
+  .max-w-2xl.mx-auto.py-8.px-4.space-y-4 {
+    padding-top: 20px !important;
+  }
+
+  .max-w-2xl.mx-auto.py-8.px-4.space-y-4 > .bg-white.rounded-xl {
+    padding: 22px !important;
+  }
+}

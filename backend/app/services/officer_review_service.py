@@ -163,6 +163,18 @@ def rebuild_authoritative_candidates(session: InspectionSession) -> None:
         base,
         session.officer_declaration_overrides,
     )
+    from app.services.reproducibility_service import deterministic_candidates_for_capture
+    deterministic_captures = [
+        capture.model_copy(update={
+            "field_candidates": deterministic_candidates_for_capture(capture),
+        })
+        for capture in session.captures
+    ]
+    deterministic_base = aggregate_candidates(deterministic_captures)
+    session.deterministic_aggregated_candidates = apply_officer_overrides(
+        deterministic_base,
+        session.officer_declaration_overrides,
+    )
 
 
 def _review_basis_payload(session: InspectionSession) -> dict:

@@ -35,16 +35,22 @@ from app.services.officer_review_service import (
 from app.services.compliance_service import orchestrate_compliance
 from app.schemas.report import InspectionReportSnapshot
 from app.services.report_service import generate_inspection_report
+from app.services.evidence_package_service import build_evidence_manifest, has_confirmed_deterministic_fail
 from app.services.pdf_report_service import generate_pdf_report
 from app.services.docx_report_service import generate_docx_report
 from app.services.image_store import store_capture_image
 from app.schemas.workflow import WorkflowSummary
 from app.services.workflow_service import WorkflowService
-from app.schemas.history import PaginatedInspectionHistory
+from app.schemas.history import PaginatedInspectionHistory, RelatedInspectionReference
+from app.services.history_reference_service import inspection_identity, related_match_basis
 import zipfile
 import io
 import json
 from app.schemas.case import CaseExportRequest
+from app.services.reproducibility_service import (
+    build_reproducibility_record,
+    default_capture_processing_provenance,
+)
 
 router = APIRouter()
 
@@ -307,6 +313,43 @@ async def get_inspection(
     return session
 
 
+@router.get("/{inspection_id}/related", response_model=List[RelatedInspectionReference])
+async def get_related_inspections(
+    limit: int = Query(5, ge=1, le=20),
+    session: InspectionSession = Depends(get_authorized_inspection),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return strong, read-only historical matches without affecting this evaluation."""
+    owner_scope = current_user.user_id if current_user.role != "ADMIN" else None
+    references = []
+    for model in InspectionRepository.list_related_reference_candidates(
+        db,
+        exclude_inspection_id=session.inspection_id,
+        user_id=owner_scope,
+    ):
+        previous = InspectionRepository.inspection_model_to_domain(model)
+        match_basis = related_match_basis(session, previous)
+        if not match_basis:
+            continue
+        identity = inspection_identity(previous)
+        snapshot = model.report_snapshots[0] if model.report_snapshots else None
+        references.append(RelatedInspectionReference(
+            inspection_id=model.inspection_id,
+            reference_date=model.reference_date,
+            created_at=model.created_at.isoformat(),
+            lifecycle_status=model.lifecycle_status,
+            overall_disposition=snapshot.overall_disposition if snapshot else None,
+            product_name=identity["display_product"],
+            brand=identity["display_brand"],
+            business_names=identity["display_businesses"],
+            match_basis=match_basis,
+        ))
+        if len(references) >= limit:
+            break
+    return references
+
+
 @router.get("/{inspection_id}/captures/{capture_id}/image")
 async def get_capture_image(
     capture_id: str,
@@ -560,6 +603,8 @@ async def upload_capture(
         quality_assessment=quality_assessment,
         visual_assessment=visual_assessment,
         field_candidates=reconciled_candidates,
+        deterministic_field_candidates=paddle_candidates,
+        processing_provenance=default_capture_processing_provenance(),
         ai_analysis=gemini_audit,
         status=quality_assessment.quality_status,
         pipeline_status=pipeline_status
@@ -846,8 +891,24 @@ def compute_active_clarification(session: InspectionSession) -> Optional[Clarifi
 
 def _update_session_compliance(session: InspectionSession):
     if reference_date_obj := datetime.strptime(session.reference_date, "%Y-%m-%d").date():
+        legal_candidates = session.deterministic_aggregated_candidates
+        if legal_candidates is None:
+            legal_candidates = session.aggregated_candidates
+        from app.services.officer_review_service import apply_officer_overrides
+        from app.services.reproducibility_service import deterministic_candidates_for_capture
+        validation_candidates = []
+        for capture in session.captures:
+            for candidate in deterministic_candidates_for_capture(capture):
+                validation_candidates.append(candidate.model_copy(update={
+                    "capture_ids": sorted({*candidate.capture_ids, capture.capture_id}),
+                }))
+        validation_candidates = apply_officer_overrides(
+            validation_candidates,
+            session.officer_declaration_overrides,
+        )
         session.rule_evaluations = orchestrate_compliance(
-            candidates=session.aggregated_candidates,
+            candidates=legal_candidates,
+            validity_candidates=validation_candidates,
             reference_date=reference_date_obj,
             product_category=session.product_category,
             product_origin=session.product_origin,
@@ -864,12 +925,24 @@ def _update_session_compliance(session: InspectionSession):
         if session.regulatory_product_class == "FOOD":
             from app.services.fssai_compliance_service import evaluate_fssai_compliance
             session.food_label_evaluations = evaluate_fssai_compliance(
-                candidates=session.aggregated_candidates,
+                candidates=legal_candidates,
+                validity_candidates=validation_candidates,
                 reference_date=reference_date_obj,
                 evidence_sufficiency=session.evidence_sufficiency
             )
         else:
             session.food_label_evaluations = []
+
+        from app.services.cross_surface_consistency_service import evaluate_cross_surface_consistency
+        consistency_results, food_consistency_results = evaluate_cross_surface_consistency(
+            captures=session.captures,
+            officer_overrides=session.officer_declaration_overrides,
+            legal_metrology_results=session.rule_evaluations,
+            food_results=session.food_label_evaluations,
+            reference_date=reference_date_obj,
+        )
+        session.rule_evaluations.extend(consistency_results)
+        session.food_label_evaluations.extend(food_consistency_results)
         
         # Aggregate missing context
         context_map = defaultdict(list)
@@ -889,9 +962,10 @@ def _update_session_compliance(session: InspectionSession):
         
         session.visual_rule_evaluations = evaluate_visual_legal_rules(
             captures=session.captures,
-            aggregated_candidates=session.aggregated_candidates,
+            aggregated_candidates=legal_candidates,
             reference_date=reference_date_obj
         )
+        session.reproducibility = build_reproducibility_record(session)
 
 @router.post("/{inspection_id}/clarifications/dismiss", response_model=InspectionSession)
 async def dismiss_clarification(
@@ -1129,8 +1203,16 @@ async def export_evidence_package(
     plan = _capture_plans.get(session.capture_plan_id, _default_plan)
     _resolve_report_snapshot(session, plan, db)
 
-    # Transiently hydrate evidence image assets
-    _hydrate_report_evidence_assets(session.report_snapshot, inspection_id)
+    if not has_confirmed_deterministic_fail(session.report_snapshot):
+        raise HTTPException(
+            status_code=400,
+            detail="Regulatory escalation requires at least one confirmed deterministic FAIL finding.",
+        )
+
+    # Hydration is export-only. Never mutate the frozen snapshot attached to the
+    # finalized inspection while assembling downloadable artifacts.
+    export_report = session.report_snapshot.model_copy(deep=True)
+    _hydrate_report_evidence_assets(export_report, inspection_id)
 
     # 1. Generate Case Details Text
     details_lines = [
@@ -1145,37 +1227,43 @@ async def export_evidence_package(
         f"Generated At: {datetime.now(timezone.utc).isoformat()}",
         "",
         "SUMMARY COUNTS:",
-        f"  Passed Checks: {session.report_snapshot.summary_counts.statutory_pass_count}",
-        f"  Failed Checks: {session.report_snapshot.summary_counts.statutory_fail_count}",
-        f"  Needs Review: {session.report_snapshot.summary_counts.statutory_review_required_count}",
-        f"  Not Applicable: {session.report_snapshot.summary_counts.statutory_not_applicable_count}",
+        f"  Passed Checks: {export_report.summary_counts.statutory_pass_count}",
+        f"  Failed Checks: {export_report.summary_counts.statutory_fail_count}",
+        f"  Needs Review: {export_report.summary_counts.statutory_review_required_count}",
+        f"  Not Applicable: {export_report.summary_counts.statutory_not_applicable_count}",
         "",
         "OBSERVED ISSUES:",
     ]
 
     details_lines.append("LEGAL METROLOGY VIOLATIONS:")
-    lm_fails = [f for f in session.report_snapshot.declaration_findings if f.status == "FAIL"]
+    lm_fails = [f for f in export_report.declaration_findings if f.status == "FAIL"]
     if lm_fails:
         for finding in lm_fails:
             details_lines.append(f"  - Domain: LEGAL_METROLOGY | {finding.field}: {finding.reason} (Rule: {finding.rule_id}, Ref: {finding.legal_reference})")
     else:
         details_lines.append("  - None")
 
-    if getattr(session.report_snapshot, "food_label_findings", None):
+    if getattr(export_report, "food_label_findings", None):
         details_lines.append("")
         details_lines.append("FOOD LABEL / FSSAI VIOLATIONS:")
-        food_fails = [f for f in session.report_snapshot.food_label_findings if f.status == "FAIL"]
+        food_fails = [f for f in export_report.food_label_findings if f.status == "FAIL"]
         if food_fails:
             for finding in food_fails:
                 details_lines.append(f"  - Domain: FOOD_LABEL_FSSAI | {finding.field}: {finding.reason} (Rule: {finding.rule_id}, Ref: {finding.legal_reference})")
         else:
             details_lines.append("  - None")
 
-    for v_finding in session.report_snapshot.visual_compliance_findings:
+    for v_finding in export_report.visual_compliance_findings:
         if v_finding.status == "FAIL":
             details_lines.append(f"- Visual: {v_finding.rule_id}: {v_finding.reason} (Ref: {v_finding.legal_reference})")
 
     details_text = "\n".join(details_lines)
+    manifest = build_evidence_manifest(
+        session,
+        session.report_snapshot,
+        officer_notes=req.officer_notes,
+        complaint_draft=req.complaint_draft,
+    )
 
     # 2. Compile Zip in Memory
     zip_buffer = io.BytesIO()
@@ -1185,10 +1273,17 @@ async def export_evidence_package(
         
         # Write complaint draft
         zip_file.writestr("complaint_draft.txt", req.complaint_draft)
-        
-        # Write officer notes
-        if req.officer_notes:
-            zip_file.writestr("officer_notes.txt", req.officer_notes)
+        zip_file.writestr("officer_notes.txt", req.officer_notes)
+        zip_file.writestr(
+            "manifest.json",
+            json.dumps(
+                manifest,
+                indent=2,
+                ensure_ascii=False,
+                sort_keys=True,
+                allow_nan=False,
+            ).encode("utf-8"),
+        )
 
         if session.officer_declaration_overrides:
             zip_file.writestr(
@@ -1204,20 +1299,20 @@ async def export_evidence_package(
 
         # Write PDF report
         try:
-            pdf_bytes = generate_pdf_report(session.report_snapshot)
+            pdf_bytes = generate_pdf_report(export_report)
             zip_file.writestr(f"DRISHTI_Inspection_Report_{inspection_id}.pdf", pdf_bytes)
         except Exception as e:
             zip_file.writestr("report_generation_error.txt", f"Failed to include PDF report: {str(e)}")
 
         # Write DOCX report
         try:
-            docx_bytes = generate_docx_report(session.report_snapshot)
+            docx_bytes = generate_docx_report(export_report)
             zip_file.writestr(f"DRISHTI_Inspection_Report_{inspection_id}.docx", docx_bytes)
         except Exception:
             pass
 
         # Write original captured images
-        for asset in session.report_snapshot.evidence_assets:
+        for asset in export_report.evidence_assets:
             capture = next(
                 (
                     item

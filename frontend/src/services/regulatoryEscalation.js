@@ -24,6 +24,18 @@ const candidateValue = (candidate) => {
   return Object.values(normalized).filter((value) => value != null && value !== '').join(' · ');
 };
 
+const evaluatedValueText = (value) => {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return unique(value.map(evaluatedValueText)).join(' · ');
+  if (typeof value === 'object') {
+    if (value.raw_value) return evaluatedValueText(value.raw_value);
+    if (value.observed_values) return evaluatedValueText(value.observed_values);
+    return unique(Object.values(value).map(evaluatedValueText)).join(' · ');
+  }
+  return '';
+};
+
 export const getConfirmedFailFindings = (session) => {
   const source = session?.report_snapshot || session;
   const groups = session?.report_snapshot ? FINALIZED_FINDING_GROUPS : FINDING_GROUPS;
@@ -38,44 +50,54 @@ export const isRegulatoryEscalationAvailable = (session) => (
   session?.lifecycle_status === 'FINALIZED' && getConfirmedFailFindings(session).length > 0
 );
 
-export const getCandidate = (session, field) => (
-  (session?.aggregated_candidates || []).find((candidate) => (
+export const getCandidate = (session, field) => {
+  const matches = (candidates) => (candidates || []).find((candidate) => (
     candidate.field === field && candidate.status === 'DETECTED'
-  ))
-);
+  ));
+  return matches(session?.report_snapshot?.extracted_evidence)
+    || matches(session?.aggregated_candidates);
+};
 
 export const getProductIdentity = (session) => ({
   product: candidateValue(
     getCandidate(session, 'COMMON_GENERIC_NAME')
       || getCandidate(session, 'PRODUCT_NAME'),
   ) || 'Not recorded',
-  brand: candidateValue(getCandidate(session, 'BRAND')) || '',
+  brand: candidateValue(
+    getCandidate(session, 'BRAND_NAME')
+      || getCandidate(session, 'BRAND'),
+  ) || '',
 });
 
 export const getFindingPresentation = (session, finding) => {
   const evidenceIds = unique(finding.evidence_ids || []);
   const directCaptureIds = finding.capture_ids || [];
-  const relatedCandidates = (session?.aggregated_candidates || []).filter((candidate) => (
-    candidate.field === finding.field
-    || (candidate.evidence_ids || []).some((id) => evidenceIds.includes(id))
+  const candidates = session?.aggregated_candidates || [];
+  const evidenceCandidates = candidates.filter((candidate) => (
+    (candidate.evidence_ids || []).some((id) => evidenceIds.includes(id))
   ));
+  const relatedCandidates = evidenceCandidates.length
+    ? evidenceCandidates
+    : candidates.filter((candidate) => candidate.field === finding.field);
   const candidateCaptureIds = relatedCandidates.flatMap((candidate) => candidate.capture_ids || []);
-  const captureIds = unique([...directCaptureIds, ...candidateCaptureIds]);
-  const sourceViews = unique((session?.captures || [])
-    .filter((capture) => (
-      captureIds.includes(capture.capture_id)
-      || (capture.field_candidates || []).some((candidate) => (
-        (candidate.evidence_ids || []).some((id) => evidenceIds.includes(id))
-      ))
+  const evidenceCaptures = (session?.captures || []).filter((capture) => (
+    evidenceIds.includes(capture.evidence_id)
+    || (capture.field_candidates || []).some((candidate) => (
+      (candidate.evidence_ids || []).some((id) => evidenceIds.includes(id))
     ))
+  ));
+  const captureIds = evidenceCaptures.length
+    ? evidenceCaptures.map((capture) => capture.capture_id)
+    : unique([...directCaptureIds, ...candidateCaptureIds]);
+  const sourceViews = unique((session?.captures || [])
+    .filter((capture) => captureIds.includes(capture.capture_id))
     .map((capture) => capture.view_id));
   const observedCandidate = relatedCandidates.find((candidate) => candidate.raw_value)
     || relatedCandidates[0];
   const evaluatedValue = finding.evaluated_value;
   const observedValue = candidateValue(observedCandidate)
-    || (typeof evaluatedValue === 'string' || typeof evaluatedValue === 'number'
-      ? String(evaluatedValue)
-      : 'No observed value recorded');
+    || evaluatedValueText(evaluatedValue)
+    || 'No observed value recorded';
 
   return {
     title: humanize(finding.title || finding.field || finding.rule_id || 'Confirmed requirement failure'),

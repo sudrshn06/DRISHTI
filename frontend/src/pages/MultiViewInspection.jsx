@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Camera, CheckCircle2, AlertCircle, RefreshCw, Layers,
   ChevronDown, ChevronRight, HelpCircle, Lock, FileText, Download,
-  CheckSquare, AlertTriangle, ShieldCheck, ArrowLeft, WifiOff
+  CheckSquare, AlertTriangle, ShieldCheck, ArrowLeft, WifiOff, History
 } from 'lucide-react';
 import {
   startInspection, uploadCapture, getActivePlan, updateInspectionContext,
   finalizeInspection, downloadReportPdf, downloadReportDocx, getInspection,
-  getCaptureImage, confirmPackageInformation, correctDeclaration
+  getCaptureImage, confirmPackageInformation, correctDeclaration,
+  getRelatedInspections
 } from '../services/api';
 import {
   listPendingCaptures,
@@ -76,6 +77,7 @@ const MultiViewInspection = ({
   onBackToHistory = null,
   onPrepareCase = null,
   onInspectionStarted = null,
+  onOpenInspection = null,
 }) => {
   const [activePlan, setActivePlan] = useState(null);
   const [session, setSession] = useState(null);
@@ -93,6 +95,7 @@ const MultiViewInspection = ({
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [guidance, setGuidance] = useState('');
+  const [relatedInspections, setRelatedInspections] = useState([]);
   
   // Visual Evidence Traceability State
   const [imageUrls, setImageUrls] = useState({});
@@ -249,6 +252,26 @@ const MultiViewInspection = ({
       setPendingUploads({});
     }
   }, [initialInspectionId]);
+
+  useEffect(() => {
+    if (!session?.inspection_id || session.captures?.length === 0) {
+      setRelatedInspections([]);
+      return;
+    }
+    let active = true;
+    getRelatedInspections(session.inspection_id)
+      .then((items) => {
+        if (active) setRelatedInspections(items || []);
+      })
+      .catch(() => {
+        if (active) setRelatedInspections([]);
+      });
+    return () => { active = false; };
+  }, [
+    session?.inspection_id,
+    session?.captures?.length,
+    session?.package_information_review?.basis_fingerprint,
+  ]);
 
   const handleStart = async (e) => {
     e.preventDefault();
@@ -715,6 +738,41 @@ const MultiViewInspection = ({
             )}
           </div>
         </div>
+      )}
+
+      {relatedInspections.length > 0 && (
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800" aria-labelledby="previous-inspections-title">
+          <div className="flex items-start gap-3">
+            <History className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" />
+            <div>
+              <h2 id="previous-inspections-title" className="text-sm font-bold text-slate-900 dark:text-slate-100">Previous inspections — reference only</h2>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                These records share strong stored identifiers with the current inspection. Their outcomes, corrections, notes and findings are never copied into this inspection.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {relatedInspections.map((item) => (
+              <article key={item.inspection_id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-900/30">
+                <p className="font-bold text-slate-800 dark:text-slate-200">
+                  {[item.brand, item.product_name].filter(Boolean).join(' — ') || 'Matched package record'}
+                </p>
+                <p className="mt-1 text-slate-500 dark:text-slate-400">Inspection date: {item.reference_date}</p>
+                <p className="mt-1 text-slate-500 dark:text-slate-400">Historical status: {translateEnum(item.overall_disposition || item.lifecycle_status)}</p>
+                <p className="mt-1 text-slate-500 dark:text-slate-400">Matched by: {item.match_basis.map(translateEnum).join(', ')}</p>
+                {onOpenInspection && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenInspection(item.inspection_id)}
+                    className="mt-3 min-h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                  >
+                    View historical record
+                  </button>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
       )}
 
       {!isOnline && (

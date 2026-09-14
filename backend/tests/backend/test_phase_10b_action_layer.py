@@ -1,6 +1,8 @@
 import io
 import uuid
 import zipfile
+import json
+from copy import deepcopy
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -9,10 +11,11 @@ from app.main import app
 from app.db.session import SessionLocal
 from app.core.security import hash_password, create_access_token
 from app.models.user import UserModel
-from app.models.inspection import InspectionModel
+from app.models.inspection import InspectionModel, ReportSnapshotModel
 from app.repositories.user_repository import UserRepository
 from app.repositories.inspection_repository import InspectionRepository
 from app.services.report_service import generate_inspection_report
+from app.schemas.compliance import LegalStatus, RuleEvaluationResult
 from app.api.routes.inspections import _default_plan
 
 client = TestClient(app)
@@ -100,6 +103,16 @@ def test_inspections(db: Session, test_users):
     # Stage 1.5 finalized cases must carry the immutable snapshot created at
     # officer-approved finalization; they may never regenerate one later.
     finalized_session = InspectionRepository.inspection_model_to_domain(ins_alpha_final)
+    finalized_session.rule_evaluations = [RuleEvaluationResult(
+        rule_id="MRP_DECLARATION_PRESENCE",
+        rule_version="1.0",
+        field="MRP",
+        status=LegalStatus.FAIL,
+        reason="Deterministic test failure",
+        evaluated_value="Observed test evidence",
+        reference_date=finalized_session.reference_date,
+        source_reference="Legal Metrology (Packaged Commodities) Rules, 2011 — Rule 6",
+    )]
     finalized_snapshot = generate_inspection_report(finalized_session, _default_plan)
     InspectionRepository.save_report_snapshot(db, finalized_snapshot)
 
@@ -161,10 +174,16 @@ def test_04_draft_session_evidence_package_blocked(test_users, test_inspections)
     assert "finalized" in res.json()["detail"].lower()
 
 
-def test_05_evidence_package_contents_correct(test_users, test_inspections):
+def test_05_evidence_package_contents_correct(db, test_users, test_inspections):
     user_alpha, _, _ = test_users
     ins_alpha_final, _ = test_inspections
     token = create_access_token(user_id=user_alpha.user_id, role=user_alpha.role, username=user_alpha.username)
+    stored_snapshot = (
+        db.query(ReportSnapshotModel)
+        .filter(ReportSnapshotModel.inspection_id == ins_alpha_final.inspection_id)
+        .one()
+    )
+    frozen_payload = deepcopy(stored_snapshot.snapshot_payload)
     
     res = client.post(
         f"/api/inspections/{ins_alpha_final.inspection_id}/evidence_package",
@@ -180,10 +199,24 @@ def test_05_evidence_package_contents_correct(test_users, test_inspections):
         assert "case_details.txt" in namelist
         assert "complaint_draft.txt" in namelist
         assert "officer_notes.txt" in namelist
+        assert "manifest.json" in namelist
         
         # Verify contents
         assert zf.read("complaint_draft.txt").decode("utf-8") == "TEST DRAFT CONTENT"
         assert zf.read("officer_notes.txt").decode("utf-8") == "TEST OFFICER NOTES"
+        manifest = json.loads(zf.read("manifest.json").decode("utf-8"))
+        assert len(manifest["findings"]["confirmed_deterministic_fail_findings"]) == 1
+        assert manifest["deterministic_escalation_summary"]["confirmed_fail_count"] == 1
+        assert manifest["officer_material"]["officer_complaint_draft"] == "TEST DRAFT CONTENT"
+        assert manifest["external_submission"]["submitted_by_drishti"] is False
+
+    db.expire_all()
+    persisted_snapshot = (
+        db.query(ReportSnapshotModel)
+        .filter(ReportSnapshotModel.inspection_id == ins_alpha_final.inspection_id)
+        .one()
+    )
+    assert persisted_snapshot.snapshot_payload == frozen_payload
 
 
 def test_06_existing_report_downloads_still_work(test_users, test_inspections):

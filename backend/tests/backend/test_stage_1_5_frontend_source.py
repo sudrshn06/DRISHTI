@@ -51,7 +51,7 @@ def test_correction_resets_report_approval_and_uses_existing_supporting_photogra
 
     assert "setReportApproved(false)" in inspection_source
     assert "Supporting photograph" in correction_source
-    assert "original remains preserved" in correction_source.lower()
+    assert "original machine observation remains preserved" in correction_source.lower()
 
 
 def test_absence_safety_document_covers_each_required_boundary():
