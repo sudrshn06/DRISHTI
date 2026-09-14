@@ -73,10 +73,26 @@ def _candidate_record(candidate, *, source_views: list[str]) -> dict[str, Any]:
     }
 
 
-def _finding_record(finding, domain: str, capture_views: dict[str, str]) -> dict[str, Any]:
+def _finding_record(
+    finding,
+    domain: str,
+    capture_views: dict[str, str],
+    evidence_captures: dict[str, set[str]],
+) -> dict[str, Any]:
     evaluated = _json_value(getattr(finding, "evaluated_value", None))
-    source_views = sorted({capture_views[item] for item in finding.capture_ids if item in capture_views})
-    if isinstance(evaluated, dict):
+    evidence_ids = sorted(set(finding.evidence_ids))
+    linked_capture_ids = sorted({
+        capture_id
+        for evidence_id in evidence_ids
+        for capture_id in evidence_captures.get(evidence_id, set())
+    })
+    capture_ids = linked_capture_ids or sorted(set(finding.capture_ids))
+    source_views = sorted({
+        capture_views[item]
+        for item in capture_ids
+        if item in capture_views
+    })
+    if not linked_capture_ids and isinstance(evaluated, dict):
         source_views = sorted(set(source_views) | set(evaluated.get("source_views", [])))
     return {
         "rule_id": finding.rule_id,
@@ -87,8 +103,8 @@ def _finding_record(finding, domain: str, capture_views: dict[str, str]) -> dict
         "evaluated_value": evaluated,
         "expected_condition": evaluated.get("expected_condition") if isinstance(evaluated, dict) else None,
         "source_views": source_views,
-        "evidence_ids": sorted(set(finding.evidence_ids)),
-        "capture_ids": sorted(set(finding.capture_ids)),
+        "evidence_ids": evidence_ids,
+        "capture_ids": capture_ids,
         "legal_reference": finding.legal_reference,
         "applicability_status": getattr(finding, "applicability_status", None),
     }
@@ -104,6 +120,16 @@ def build_evidence_manifest(
     """Build an allowlisted manifest from the frozen report and deterministic evidence."""
     capture_views = {capture.capture_id: capture.view_id for capture in session.captures}
     capture_by_id = {capture.capture_id: capture for capture in session.captures}
+    evidence_captures: dict[str, set[str]] = {}
+    for capture in session.captures:
+        evidence_ids = {capture.evidence_id} if capture.evidence_id else set()
+        for candidate in deterministic_candidates_for_capture(capture):
+            evidence_ids.update(candidate.evidence_ids)
+        if capture.visual_assessment:
+            for assessment in capture.visual_assessment.assessments:
+                evidence_ids.update(assessment.evidence_ids)
+        for evidence_id in evidence_ids:
+            evidence_captures.setdefault(evidence_id, set()).add(capture.capture_id)
 
     captures = []
     for asset in sorted(report.evidence_assets, key=lambda item: (item.view_id, item.capture_id)):
@@ -160,15 +186,27 @@ def build_evidence_manifest(
         ("LEGAL_METROLOGY", report.declaration_findings),
         ("FOOD_LABEL_FSSAI", report.food_label_findings),
     ):
-        findings.extend(_finding_record(item, domain, capture_views) for item in items)
+        findings.extend(
+            _finding_record(item, domain, capture_views, evidence_captures)
+            for item in items
+        )
     for item in report.visual_compliance_findings:
+        linked_capture_ids = sorted({
+            capture_id
+            for evidence_id in item.evidence_ids
+            for capture_id in evidence_captures.get(evidence_id, set())
+        })
+        capture_ids = linked_capture_ids or sorted(set(item.capture_ids))
         findings.append({
             "rule_id": item.rule_id, "domain": "VISUAL_PRESENTATION", "status": item.status,
             "field": item.field, "reason": item.reason, "evaluated_value": None,
             "expected_condition": None,
-            "source_views": sorted({capture_views[cid] for cid in item.capture_ids if cid in capture_views}),
-            "evidence_ids": sorted(set(item.evidence_ids)), "capture_ids": sorted(set(item.capture_ids)),
+            "source_views": sorted({capture_views[cid] for cid in capture_ids if cid in capture_views}),
+            "evidence_ids": sorted(set(item.evidence_ids)), "capture_ids": capture_ids,
             "legal_reference": item.legal_reference, "applicability_status": None,
+            "capability": item.capability,
+            "metrics": _json_value(item.metrics),
+            "limitations": item.limitations,
         })
     findings.sort(key=lambda item: (item["domain"], item["rule_id"], item["status"], item.get("field") or ""))
     confirmed_fails = [item for item in findings if item["status"] == "FAIL"]

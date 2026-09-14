@@ -5,6 +5,8 @@ import test from 'node:test';
 import {
   buildRegulatoryEscalationSummary,
   getConfirmedFailFindings,
+  getFindingPresentation,
+  getProductIdentity,
   isRegulatoryEscalationAvailable,
 } from '../src/services/regulatoryEscalation.js';
 
@@ -115,4 +117,68 @@ test('finalized finding uses its preserved deterministic value when aggregate lo
 
   assert.match(summary, /MRP Rs 137 plus GST/);
   assert.doesNotMatch(summary, /No observed value recorded/);
+});
+
+test('finalized escalation identity uses immutable finalized declarations over stale live values', () => {
+  const data = session({ rules: [] });
+  data.aggregated_candidates = [
+    { field: 'COMMON_GENERIC_NAME', status: 'DETECTED', raw_value: 'Stale machine product' },
+    { field: 'BRAND_NAME', status: 'DETECTED', raw_value: 'Stale machine brand' },
+  ];
+  data.report_snapshot = {
+    declaration_findings: [],
+    food_label_findings: [],
+    visual_compliance_findings: [],
+    extracted_evidence: [
+      { field: 'COMMON_GENERIC_NAME', status: 'DETECTED', raw_value: 'Confirmed final product' },
+      { field: 'BRAND_NAME', status: 'DETECTED', raw_value: 'Confirmed final brand' },
+    ],
+  };
+
+  assert.deepEqual(getProductIdentity(data), {
+    product: 'Confirmed final product',
+    brand: 'Confirmed final brand',
+  });
+});
+
+test('finding source views follow exact supporting evidence, not unrelated same-field captures', () => {
+  const data = session({ rules: [] });
+  data.aggregated_candidates = [{
+    field: 'FSSAI_LICENCE',
+    status: 'REVIEW_REQUIRED',
+    evidence_ids: ['front-context', 'back-failure'],
+    capture_ids: ['capture-front', 'capture-back'],
+  }];
+  data.captures = [
+    {
+      capture_id: 'capture-front',
+      view_id: 'FRONT',
+      field_candidates: [{ field: 'FSSAI_LICENCE', evidence_ids: ['front-context'] }],
+    },
+    {
+      capture_id: 'capture-back',
+      view_id: 'BACK',
+      field_candidates: [{ field: 'FSSAI_LICENCE', evidence_ids: ['back-failure'] }],
+    },
+  ];
+
+  const backOnly = getFindingPresentation(data, finding('FAIL', {
+    field: 'FSSAI_LICENCE',
+    evidence_ids: ['back-failure'],
+    capture_ids: ['capture-front', 'capture-back'],
+  }));
+  const frontOnly = getFindingPresentation(data, finding('FAIL', {
+    field: 'FSSAI_LICENCE',
+    evidence_ids: ['front-context'],
+    capture_ids: ['capture-front', 'capture-back'],
+  }));
+  const both = getFindingPresentation(data, finding('FAIL', {
+    field: 'FSSAI_LICENCE',
+    evidence_ids: ['front-context', 'back-failure'],
+    capture_ids: ['capture-front', 'capture-back'],
+  }));
+
+  assert.deepEqual(backOnly.sourceViews, ['BACK']);
+  assert.deepEqual(frontOnly.sourceViews, ['FRONT']);
+  assert.deepEqual(both.sourceViews, ['FRONT', 'BACK']);
 });

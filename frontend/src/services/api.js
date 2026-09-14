@@ -48,6 +48,11 @@ export const getInspection = async (inspectionId) => {
   return response.data;
 };
 
+export const getRelatedInspections = async (inspectionId) => {
+  const response = await api.get(`/inspections/${inspectionId}/related`);
+  return response.data;
+};
+
 export const getWorkflowSummary = async (inspectionId) => {
   const response = await api.get(`/inspections/${inspectionId}/workflow`);
   return response.data;

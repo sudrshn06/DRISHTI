@@ -225,6 +225,7 @@ function App() {
               initialInspectionId={selectedInspectionId}
               onInspectionStarted={setSelectedInspectionId}
               onBackToHistory={() => navigate('history')}
+              onOpenInspection={handleOpenInspection}
               onPrepareCase={(inspectionId) => { setSelectedInspectionId(inspectionId); setActiveView('prepare-case'); }}
             />
           )}

@@ -1,8 +1,8 @@
 from datetime import datetime
 import math
 from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import select, desc, func
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import select, desc, func, or_, cast, Text, exists
 
 from app.models.inspection import InspectionModel, CaptureModel, ReportSnapshotModel
 from app.models.user import UserModel
@@ -155,6 +155,31 @@ class InspectionRepository:
         return list(db.scalars(stmt).all())
 
     @staticmethod
+    def list_related_reference_candidates(
+        db: Session,
+        *,
+        exclude_inspection_id: str,
+        user_id: Optional[str],
+        limit: int = 100,
+    ) -> List[InspectionModel]:
+        """Load recent metadata/candidates only; never rerun OCR or compliance."""
+        stmt = (
+            select(InspectionModel)
+            .options(
+                selectinload(InspectionModel.captures),
+                selectinload(InspectionModel.report_snapshots),
+            )
+            .where(InspectionModel.inspection_id != exclude_inspection_id)
+        )
+        if user_id:
+            stmt = stmt.where(InspectionModel.created_by_user_id == user_id)
+        stmt = stmt.order_by(
+            InspectionModel.created_at.desc(),
+            InspectionModel.inspection_id.desc(),
+        ).limit(limit)
+        return list(db.scalars(stmt).all())
+
+    @staticmethod
     def list_inspection_summaries(
         db: Session,
         user_id: Optional[str] = None,
@@ -210,9 +235,28 @@ class InspectionRepository:
 
         if search and search.strip():
             term = f"%{search.strip()}%"
+            capture_value_match = exists(
+                select(CaptureModel.capture_id).where(
+                    CaptureModel.inspection_id == InspectionModel.inspection_id,
+                    cast(CaptureModel.field_candidates, Text).ilike(term),
+                )
+            )
+            snapshot_value_match = exists(
+                select(ReportSnapshotModel.report_id).where(
+                    ReportSnapshotModel.inspection_id == InspectionModel.inspection_id,
+                    cast(ReportSnapshotModel.snapshot_payload, Text).ilike(term),
+                )
+            )
             conditions.append(
-                InspectionModel.inspection_id.ilike(term) |
-                InspectionModel.product_category.ilike(term)
+                or_(
+                    InspectionModel.inspection_id.ilike(term),
+                    InspectionModel.product_category.ilike(term),
+                    InspectionModel.reference_date.ilike(term),
+                    InspectionModel.lifecycle_status.ilike(term),
+                    latest_snapshot_sub.ilike(term),
+                    capture_value_match,
+                    snapshot_value_match,
+                )
             )
 
         if lifecycle_status:
@@ -363,6 +407,7 @@ class InspectionRepository:
             GeminiPackageAnalysis,
             GeminiPackageAuditRecord,
         )
+        from pydantic import ValidationError
 
         qa = ImageQualityAssessment.model_validate(cap_model.quality_assessment) if cap_model.quality_assessment else None
         va = CaptureVisualAssessmentSummary.model_validate(cap_model.visual_assessment) if cap_model.visual_assessment else None
@@ -398,7 +443,69 @@ class InspectionRepository:
         ai_analysis = None
         if cap_model.ai_analysis:
             if "analysis" in cap_model.ai_analysis:
-                ai_analysis = GeminiPackageAuditRecord.model_validate(cap_model.ai_analysis)
+                audit_payload = cap_model.ai_analysis
+                try:
+                    # Current envelopes always pass the unchanged strict schema.
+                    ai_analysis = GeminiPackageAuditRecord.model_validate(audit_payload)
+                except ValidationError as exc:
+                    # One intermediate Gemini transport recorded attempt diagnostics
+                    # in analysis.metadata. Adapt only those six known fields at this
+                    # read boundary; arbitrary extras must remain validation errors.
+                    legacy_metadata_fields = frozenset({
+                        "primary_attempt_status",
+                        "primary_attempt_response_id",
+                        "primary_attempt_failure_code",
+                        "targeted_fallback_status",
+                        "targeted_fallback_response_id",
+                        "targeted_fallback_failure_code",
+                    })
+                    allowed_error_locations = {
+                        ("analysis", "metadata", field)
+                        for field in legacy_metadata_fields
+                    }
+                    if not exc.errors() or any(
+                        error["type"] != "extra_forbidden"
+                        or tuple(error["loc"]) not in allowed_error_locations
+                        for error in exc.errors()
+                    ):
+                        raise
+
+                    analysis_payload = audit_payload.get("analysis")
+                    metadata_payload = (
+                        analysis_payload.get("metadata")
+                        if isinstance(analysis_payload, dict)
+                        else None
+                    )
+                    if not isinstance(metadata_payload, dict) or not (
+                        legacy_metadata_fields & metadata_payload.keys()
+                    ):
+                        raise
+
+                    compatible_metadata = {
+                        key: value
+                        for key, value in metadata_payload.items()
+                        if key not in legacy_metadata_fields
+                    }
+                    compatible_analysis = {
+                        **analysis_payload,
+                        "metadata": compatible_metadata,
+                    }
+                    compatible_envelope = {
+                        **audit_payload,
+                        "analysis": compatible_analysis,
+                    }
+                    ai_analysis = GeminiPackageAuditRecord.model_validate(compatible_envelope)
+
+                # Capture identity and content hash come from the trusted database
+                # columns for both current and intermediate historical envelopes.
+                ai_analysis = ai_analysis.model_copy(update={
+                    "inspection_id": cap_model.inspection_id,
+                    "capture_evidence": [GeminiCaptureEvidenceReference(
+                        capture_id=cap_model.capture_id,
+                        view_id=cap_model.view_id,
+                        image_sha256=cap_model.image_sha256,
+                    )],
+                })
             else:
                 # Backward-compatible rehydration for captures written by the
                 # earliest uncommitted Stage 1 shape. The server-owned capture

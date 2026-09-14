@@ -212,7 +212,7 @@ const InspectionHistory = ({ onOpenInspection, onStartNew, initialFilters = null
                 type="text"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Product category or inspector…"
+              placeholder="Product, brand, business, barcode, reference or status…"
                 className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:text-slate-100"
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />

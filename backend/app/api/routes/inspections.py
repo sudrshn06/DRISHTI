@@ -41,7 +41,8 @@ from app.services.docx_report_service import generate_docx_report
 from app.services.image_store import store_capture_image
 from app.schemas.workflow import WorkflowSummary
 from app.services.workflow_service import WorkflowService
-from app.schemas.history import PaginatedInspectionHistory
+from app.schemas.history import PaginatedInspectionHistory, RelatedInspectionReference
+from app.services.history_reference_service import inspection_identity, related_match_basis
 import zipfile
 import io
 import json
@@ -310,6 +311,43 @@ async def get_inspection(
     session: InspectionSession = Depends(get_authorized_inspection)
 ):
     return session
+
+
+@router.get("/{inspection_id}/related", response_model=List[RelatedInspectionReference])
+async def get_related_inspections(
+    limit: int = Query(5, ge=1, le=20),
+    session: InspectionSession = Depends(get_authorized_inspection),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return strong, read-only historical matches without affecting this evaluation."""
+    owner_scope = current_user.user_id if current_user.role != "ADMIN" else None
+    references = []
+    for model in InspectionRepository.list_related_reference_candidates(
+        db,
+        exclude_inspection_id=session.inspection_id,
+        user_id=owner_scope,
+    ):
+        previous = InspectionRepository.inspection_model_to_domain(model)
+        match_basis = related_match_basis(session, previous)
+        if not match_basis:
+            continue
+        identity = inspection_identity(previous)
+        snapshot = model.report_snapshots[0] if model.report_snapshots else None
+        references.append(RelatedInspectionReference(
+            inspection_id=model.inspection_id,
+            reference_date=model.reference_date,
+            created_at=model.created_at.isoformat(),
+            lifecycle_status=model.lifecycle_status,
+            overall_disposition=snapshot.overall_disposition if snapshot else None,
+            product_name=identity["display_product"],
+            brand=identity["display_brand"],
+            business_names=identity["display_businesses"],
+            match_basis=match_basis,
+        ))
+        if len(references) >= limit:
+            break
+    return references
 
 
 @router.get("/{inspection_id}/captures/{capture_id}/image")

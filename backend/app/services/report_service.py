@@ -297,7 +297,8 @@ def generate_inspection_report(
             legal_reference=vr.legal_reference,
             limitations=str(vr.limitations or ""),
             evidence_ids=list(vr.evidence_ids or []),
-            capture_ids=list(vr.capture_ids or [])
+            capture_ids=list(vr.capture_ids or []),
+            metrics=dict(vr.metrics or {}),
         ))
 
     # 4. Extracted Evidence

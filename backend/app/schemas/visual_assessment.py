@@ -65,6 +65,21 @@ class VisualReadabilitySignal(BaseModel):
     readability_reasons: List[str] = Field(
         default_factory=list, description="Technical observations regarding framing, sharpness, or clarity"
     )
+    quality_metrics: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Measured blur, brightness, and glare evidence from the source capture",
+    )
+
+class DeclarationProximityEvidence(BaseModel):
+    other_field: str = Field(..., description="Other declaration compared in the same source capture")
+    other_evidence_ids: List[str] = Field(default_factory=list)
+    relative_direction: str = Field(
+        ..., description="Image-coordinate relationship: ABOVE, BELOW, LEFT, RIGHT, or OVERLAPPING"
+    )
+    center_distance_ratio: float = Field(
+        ..., ge=0.0, description="Distance between region centres divided by the image diagonal"
+    )
+    edge_gap_px: float = Field(..., ge=0.0, description="Shortest measured gap between bounding boxes in pixels")
 
 class DeclarationVisualAssessment(BaseModel):
     field: str = Field(..., description="Field/declaration type (e.g. MRP, NET_QUANTITY, CONSUMER_CARE, etc.)")
@@ -80,6 +95,13 @@ class DeclarationVisualAssessment(BaseModel):
     )
     prominence: Optional[TextProminenceMetrics] = Field(
         None, description="Image-relative text prominence metrics (strictly non-physical)"
+    )
+    relative_position_in_image: Optional[str] = Field(
+        None, description="Descriptive image region derived from the bounding-box centre; not a statutory placement conclusion"
+    )
+    proximity_to_declarations: List[DeclarationProximityEvidence] = Field(
+        default_factory=list,
+        description="Measured same-surface distances and coordinate relationships to other declarations",
     )
     readability: VisualReadabilitySignal = Field(
         ..., description="Technical readability and capture sufficiency signals"
@@ -169,4 +191,3 @@ class VisualRuleEvaluationResult(BaseModel):
     metrics: Dict[str, Any] = Field(default_factory=dict, description="Underlying quantitative metrics")
     reason: str = Field(..., description="Detailed explanation of the visual-to-legal decision boundary")
     limitations: str = Field(..., description="Explicit disclosure of technical and statutory measurement limitations")
-

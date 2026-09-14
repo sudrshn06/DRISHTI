@@ -111,6 +111,58 @@ def test_manifest_preserves_cross_surface_and_image_provenance():
     assert finding["expected_condition"] == "Stored deterministic condition"
 
 
+@pytest.mark.parametrize(
+    ("finding_evidence", "expected_views"),
+    [
+        (["evidence-front"], ["FRONT"]),
+        (["evidence-back"], ["BACK"]),
+        (["evidence-front", "evidence-back"], ["BACK", "FRONT"]),
+    ],
+)
+def test_manifest_finding_views_follow_only_linked_evidence(
+    finding_evidence,
+    expected_views,
+):
+    session, report, front_candidate = _case(("FAIL",))
+    back_candidate = front_candidate.model_copy(update={
+        "raw_value": "MRP Rs 139 plus GST",
+        "evidence_ids": ["evidence-back"],
+        "capture_ids": ["capture-back"],
+    })
+    session.captures.append(CaptureRecord(
+        capture_id="capture-back",
+        evidence_id="image-back",
+        view_id="BACK",
+        image_sha256="b" * 64,
+        processing_provenance=default_capture_processing_provenance(),
+        field_candidates=[back_candidate],
+        deterministic_field_candidates=[back_candidate],
+    ))
+    finding = report.declaration_findings[0]
+    finding.evidence_ids = finding_evidence
+    # Historical aggregate capture provenance can be broader than this
+    # finding's exact supporting evidence and must not widen its source views.
+    finding.capture_ids = ["capture-front", "capture-back"]
+    finding.evaluated_value = {"source_views": ["FRONT", "BACK"]}
+
+    exported = build_evidence_manifest(session, report)["findings"][
+        "confirmed_deterministic_fail_findings"
+    ][0]
+
+    assert exported["source_views"] == expected_views
+    assert exported["capture_ids"] == [
+        capture.capture_id
+        for capture in sorted(
+            (
+                capture
+                for capture in session.captures
+                if capture.view_id in expected_views
+            ),
+            key=lambda capture: capture.capture_id,
+        )
+    ]
+
+
 def test_manifest_preserves_officer_correction_without_rewriting_machine_observation():
     session, report, observed = _case(("FAIL",))
     confirmed = observed.model_copy(update={

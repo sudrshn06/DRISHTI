@@ -59,6 +59,10 @@ class VisualComplianceFindingItem(BaseModel):
     limitations: str = Field(..., description="Technical and statutory limitation disclosures")
     evidence_ids: List[str] = Field(default_factory=list, description="Supporting evidence IDs")
     capture_ids: List[str] = Field(default_factory=list, description="Supporting capture IDs")
+    metrics: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Measured image-relative evidence; never a physical-unit inference",
+    )
 
 class ReportEvidenceAsset(BaseModel):
     capture_id: str = Field(..., description="Unique capture identifier")
